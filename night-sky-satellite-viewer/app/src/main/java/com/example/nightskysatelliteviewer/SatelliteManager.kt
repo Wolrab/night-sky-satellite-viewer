@@ -19,6 +19,8 @@ object SatelliteManager {
 
     val satellites: MutableList<Satellite> = mutableListOf<Satellite>()
 
+    var xmlText = ""
+
     private val satelliteXmlUrl = URL(satelliteXmlUrlText)
 
     fun updateSatellite(id: Int) {
@@ -26,7 +28,7 @@ object SatelliteManager {
     }
 
     fun updateAll() {
-        val xmlText = satelliteXmlUrl.readText()
+        xmlText = satelliteXmlUrl.readText()
 
         val xmlDoc = stringToXmlDoc(xmlText)
         val satelliteXmlElements: NodeList? = xmlDoc.getElementsByTagName("body")
