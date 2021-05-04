@@ -15,7 +15,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 const val satelliteXmlUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=xml"
 const val epochDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
 
-object SatelliteDataList {
+object SatelliteManager {
 
     val satellites: MutableList<Satellite> = mutableListOf<Satellite>()
 
