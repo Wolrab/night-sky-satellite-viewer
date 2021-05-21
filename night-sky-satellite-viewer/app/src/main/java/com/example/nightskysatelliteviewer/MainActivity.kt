@@ -1,8 +1,12 @@
 package com.example.nightskysatelliteviewer
 
+import TLEConversion
 import android.os.Bundle
 import android.os.StrictMode
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import java.io.File
+import java.net.URL
 
 
 class MainActivity : AppCompatActivity() {
@@ -15,6 +19,14 @@ class MainActivity : AppCompatActivity() {
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
 
-        SatelliteManager.updateAll()
+        // TODO: TESTING: MOVE TO SatelliteManager
+        val url = URL("http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle")
+        val file = File(filesDir, "gp.txt")
+        file.deleteOnExit()
+        file.writeText(url.readText())
+
+        val converter = TLEConversion(file.absolutePath)
+        Log.d("TEST", converter.getLatitude("CALSPHERE 1").toString())
+        Log.d("TEST", converter.getLongitude("CALSPHERE 1").toString())
     }
 }

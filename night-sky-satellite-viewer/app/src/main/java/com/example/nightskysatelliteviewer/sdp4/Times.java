@@ -75,8 +75,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
 
 @author
   Horst Meyerdierks, http://www.chiandh.me.uk
-
-@see uk.me.chiandh.Lib.Hmelib
  */
 
 public class Times
