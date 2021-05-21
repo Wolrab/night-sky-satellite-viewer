@@ -1,3 +1,4 @@
+import android.util.Log
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import kotlin.math.atan
 import kotlin.math.pow
@@ -6,7 +7,7 @@ import kotlin.math.sqrt
 class TLEConversion {
     private val a = 6378.0
     private val b = 6357.0
-    private val ecc_squared = 1 - Math.pow(b / a, 2.0)
+    private val ecc_squared = 1 - (b / a).pow(2.0)
 
     private val sdp4 = SDP4()
     private val fileName: String
@@ -21,20 +22,29 @@ class TLEConversion {
     // (basically the cliffnotes extracted from a few key papers on the subject)
     fun getLongitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
-        val longitude = atan(pos[1] / pos[0])
-        return Math.toDegrees(longitude)
+        var longitude = atan(pos[1] / pos[0])
+        Log.d("CONVERSION", "Longitude: $longitude")
+        longitude = Math.toDegrees(longitude)
+        Log.d("CONVERSION", "Longitude (Degrees): $longitude")
+        return longitude
     }
 
     fun getLatitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
         val thresh = 0.1
         var prev = 1.0 / (1 - ecc_squared) // Initial estimate
+
+        Log.d("CONVERSION", "Latitude Initial: $prev")
         var latitude = iterateLatitude(pos, prev)
         while (Math.abs(latitude - prev) >= thresh) {
+            Log.d("CONVERSION", "Latitude Iter: $latitude")
             prev = latitude
             latitude = iterateLatitude(pos, prev)
         }
-        return Math.toDegrees(latitude)
+        Log.d("CONVERSION", "Latitude Final: $latitude")
+        latitude = Math.toDegrees(latitude)
+        Log.d("CONVERSION", "Latitude Final (Degrees): $latitude")
+        return latitude
     }
 
     private fun iterateLatitude(pos: DoubleArray, prev: Double): Double {
@@ -50,12 +60,17 @@ class TLEConversion {
     private fun getSatellitePosition(satellite: String): DoubleArray {
         sdp4.NoradByName(fileName, satellite)
         sdp4.GetPosVel(getJulianDate())
-        return sdp4.itsR
+        val pos = sdp4.itsR
+        Log.d("CONVERSION", "Position: ${pos[0]}, ${pos[1]}, ${pos[2]}")
+        return pos
     }
 
     private fun getJulianDate(): Double {
         /* Get the milliseconds since UT 1970-01-01T00:00:00 from system clock.
          * Convert to days then to JD. */
-        return System.currentTimeMillis().toDouble() / 86400000.0 + 587.5 - 10000.0
+
+        val julianDate = System.currentTimeMillis().toDouble() / 86400000.0 + 587.5 - 10000.0
+        Log.d("CONVERSION", "Julian Date: $julianDate")
+        return julianDate
     }
 }

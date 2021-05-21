@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
         file.writeText(url.readText())
 
         val converter = TLEConversion(file.absolutePath)
-        Log.d("TEST", converter.getLatitude("CALSPHERE 1").toString())
-        Log.d("TEST", converter.getLongitude("CALSPHERE 1").toString())
+        converter.getLatitude("CALSPHERE 1")
+        converter.getLongitude("CALSPHERE 1")
     }
 }
