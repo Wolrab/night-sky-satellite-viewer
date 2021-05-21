@@ -1,8 +1,10 @@
-package uk.me.chiandh.Lib;
+
+package com.example.nightskysatelliteviewer.sdp4;
 
 /**
- * <p>The <code>SDP4InvalidNumException</code> is thrown when a number cannot
- * be parsed from a string.</p>
+ * <p>The <code>SDP4NoLineOneException</code> is thrown when the first line
+ * of a two line element set (TLE) is not found.  Also if the second line is
+ * not found.</p>
  *
  * <p>Copyright: &copy; 2003 Horst Meyerdierks.</p>
  *
@@ -19,7 +21,7 @@ package uk.me.chiandh.Lib;
  * <p>You should have received a copy of the GNU General Public Licence
  * along with this programme; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
- *
+
 <dl>
 <dt><strong>2003-09-16:</strong> hme</dt>
 <dd>Initial revision.</dd>
@@ -29,7 +31,7 @@ package uk.me.chiandh.Lib;
   Horst Meyerdierks, http://www.chiandh.me.uk
  */
 
-public final class SDP4InvalidNumException extends SDP4Exception {
-  public SDP4InvalidNumException()         {super();}
-  public SDP4InvalidNumException(String s) {super(s);}
+public final class SDP4NoLineOneException extends SDP4Exception {
+  public SDP4NoLineOneException()         {super();}
+  public SDP4NoLineOneException(String s) {super(s);}
 }

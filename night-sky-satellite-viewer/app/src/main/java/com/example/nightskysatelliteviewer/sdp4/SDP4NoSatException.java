@@ -1,10 +1,9 @@
 
-package uk.me.chiandh.Lib;
+package com.example.nightskysatelliteviewer.sdp4;
 
 /**
- * <p>The <code>SDP4NoLineOneException</code> is thrown when the first line
- * of a two line element set (TLE) is not found.  Also if the second line is
- * not found.</p>
+ * <p>The <code>SDP4NoSatException</code> is thrown when the named satellite
+ * is not found in the named file.</p>
  *
  * <p>Copyright: &copy; 2003 Horst Meyerdierks.</p>
  *
@@ -31,7 +30,7 @@ package uk.me.chiandh.Lib;
   Horst Meyerdierks, http://www.chiandh.me.uk
  */
 
-public final class SDP4NoLineOneException extends SDP4Exception {
-  public SDP4NoLineOneException()         {super();}
-  public SDP4NoLineOneException(String s) {super(s);}
+public final class SDP4NoSatException extends SDP4Exception {
+  public SDP4NoSatException()         {super();}
+  public SDP4NoSatException(String s) {super(s);}
 }

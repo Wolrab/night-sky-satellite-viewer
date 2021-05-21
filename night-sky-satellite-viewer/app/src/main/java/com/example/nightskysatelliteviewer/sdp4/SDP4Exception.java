@@ -1,5 +1,5 @@
 
-package uk.me.chiandh.Lib;
+package com.example.nightskysatelliteviewer.sdp4;
 
 /**
  * <p>The <code>SDP4Exception</code> is superclass for any exceptions that

@@ -1,4 +1,4 @@
-package uk.me.chiandh.Lib;
+package com.example.nightskysatelliteviewer.sdp4;
 
 import java.io.*;
 import java.text.*;

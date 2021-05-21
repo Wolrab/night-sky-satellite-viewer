@@ -6,9 +6,7 @@ import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
 import java.io.StringReader
 import java.net.URL
-import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.*
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
@@ -21,6 +19,7 @@ object SatelliteManager {
 
     var xmlText = ""
 
+    // TODO: NO NETWORK SCHENANIGANS ON MAIN THREAD
     private val satelliteXmlUrl = URL(satelliteXmlUrlText)
 
     fun updateSatellite(id: Int) {
