@@ -26,7 +26,9 @@ class MainActivity : AppCompatActivity() {
         file.writeText(url.readText())
 
         val converter = TLEConversion(file.absolutePath)
-        converter.getLatitude("CALSPHERE 1")
-        converter.getLongitude("CALSPHERE 1")
+
+        val testSat = "NAVSTAR 76 (USA 266)"
+        converter.getLatitude(testSat)
+        converter.getLongitude(testSat)
     }
 }
