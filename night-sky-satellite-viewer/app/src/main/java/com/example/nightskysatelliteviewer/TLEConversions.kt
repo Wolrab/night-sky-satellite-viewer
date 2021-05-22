@@ -55,12 +55,45 @@ class TLEConversion {
         return longitude
     }
 
+
     fun getLatitude(satellite: String): Double {
+        val pos = getSatellitePosition(satellite)
+
+        val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
+        val er2 = (a.pow(2) - b.pow(2))/b.pow(2)
+        val F = 54 * b.pow(2) * pos[2].pow(2)
+        val G = r.pow(2) + (1-eccSquared)*pos[2].pow(2)-eccSquared*(a.pow(2) - b.pow(2))
+        val c = (eccSquared.pow(2)*F*r.pow(2))/G.pow(3)
+        val s = (1+c+sqrt(c.pow(2)+2*c)).pow(0.333333) // NaN HERE!
+        val P = F/(3*(s+1+1/s)*G.pow(2))
+        val Q = sqrt(1+2*eccSquared.pow(2)*P)
+        val r0 = -(P*eccSquared*r)/(1+Q)+sqrt(0.5*a.pow(2)*(1+1/Q)-(P*(1-eccSquared)*pos[2])/(Q*(1+Q)-0.5*P*r.pow(2)))
+        val U = sqrt((r-eccSquared*r0).pow(2)+pos[2].pow(2))
+        val V = sqrt((r-eccSquared*r0).pow(2)+(1-eccSquared)*pos[2].pow(2))
+        val z0 = (b.pow(2)*pos[2])/(a*V)
+
+        val h = U*(1-b.pow(2)/(a*V))
+        val ratio = (pos[2]+er2*z0)/r
+        var latitude = atan(ratio)
+        Log.d("CONVERSION", "Latitude: Vars: $r $er2 $F $G $c $s $P $Q $r0 $U $V $z0")
+        Log.d("CONVERSION", "Latitude: Ratio: $ratio")
+        Log.d("CONVERSION", "Latitude: Latitude: $latitude")
+
+        latitude = Math.toDegrees(latitude)
+        Log.d("CONVERSION", "Latitude: Degrees: $latitude")
+
+        return latitude
+    }
+
+    // Leaving here for now, there's probably no good way to make this work as-is
+    fun getNotLatitude(satellite: String): Double {
         // Parameters for Newton's method
         val thresh = 0.01
         val maxIter = 10
 
         val pos = getSatellitePosition(satellite)
+
+        // TODO: This is all bad :/
         var kPrev = 1.0 / (1 - eccSquared) // Initial estimate
         Log.d("CONVERSION", "Latitude: k Initial: $kPrev")
 
@@ -75,7 +108,7 @@ class TLEConversion {
         }
         Log.d("CONVERSION", "Latitude: k Final: $k")
 
-        val p = pos[0].pow(2.0) + pos[1].pow(2.0)
+        val p = sqrt(pos[0].pow(2.0) + pos[1].pow(2.0))
         var latitude = (k*pos[2])/p
         latitude = atan(latitude)
         Log.d("CONVERSION", "Latitude Final: $latitude")
@@ -98,12 +131,18 @@ class TLEConversion {
         sdp4.NoradByName(fileName, satellite)
         sdp4.GetPosVel(getJulianDate())
 
+        // Set normalization factor to avoid disappearing to infinity in latitude calculations.
+        var factor: Double = 1/sdp4.itsR.min()!!
+
+        // Increase minimum?
+        factor *= 1000000
+
         // Flip the x and y axis as the library returns it backwards from the canonical ECEF system
         // The units are in Gm, which appears to put distances near a value of ~1 (which unless I'm
         // misremembering will lead to less floating point error).
-        val xScale = -1
-        val yScale = -1
-        val zScale = 1
+        val xScale = -factor
+        val yScale = -factor
+        val zScale = factor
 
         val pos: Array<Double> = arrayOf(sdp4.itsR[0] * xScale, sdp4.itsR[1] * yScale, sdp4.itsR[2] * zScale)
         Log.d("CONVERSION", "Position: ${pos[0]}, ${pos[1]}, ${pos[2]}")

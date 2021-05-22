@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 import java.net.URL
 
-
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -18,6 +17,8 @@ class MainActivity : AppCompatActivity() {
         // TODO: REMOVE POLICY BELOW WHEN NETWORK ACCESS OUTSIDE OF MAIN THREAD
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
+
+        connorsDumbTestingMethod()
     }
 
     private fun connorsDumbTestingMethod() {
@@ -29,12 +30,12 @@ class MainActivity : AppCompatActivity() {
         val converter = TLEConversion(file.absolutePath)
 
         var testSat: String
-        testSat = "NAVSTAR 76 (USA 266)"
         testSat = "NAVSTAR 77 (USA 289)"
         testSat = "DELLINGR (RBLE)"
         testSat = "NAVSTAR 56 (USA 180)"
         testSat = "NAVSTAR 58 (USA 190)"
         testSat = "G-SAT"
+        testSat = "NAVSTAR 76 (USA 266)"
         Log.d("CONVERSION", "Satellite: $testSat")
         converter.getLatitude(testSat)
         converter.getLongitude(testSat)
