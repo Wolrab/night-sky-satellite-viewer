@@ -18,8 +18,9 @@ class MainActivity : AppCompatActivity() {
         // TODO: REMOVE POLICY BELOW WHEN NETWORK ACCESS OUTSIDE OF MAIN THREAD
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
+    }
 
-        // TODO: TESTING: MOVE TO SatelliteManager
+    private fun connorsDumbTestingMethod() {
         val url = URL("http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle")
         val file = File(filesDir, "gp.txt")
         file.deleteOnExit()
@@ -27,7 +28,14 @@ class MainActivity : AppCompatActivity() {
 
         val converter = TLEConversion(file.absolutePath)
 
-        val testSat = "NAVSTAR 76 (USA 266)"
+        var testSat: String
+        testSat = "NAVSTAR 76 (USA 266)"
+        testSat = "NAVSTAR 77 (USA 289)"
+        testSat = "DELLINGR (RBLE)"
+        testSat = "NAVSTAR 56 (USA 180)"
+        testSat = "NAVSTAR 58 (USA 190)"
+        testSat = "G-SAT"
+        Log.d("CONVERSION", "Satellite: $testSat")
         converter.getLatitude(testSat)
         converter.getLongitude(testSat)
     }

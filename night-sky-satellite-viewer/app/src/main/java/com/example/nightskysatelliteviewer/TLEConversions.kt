@@ -1,9 +1,6 @@
 import android.util.Log
 import com.example.nightskysatelliteviewer.sdp4.SDP4
-import kotlin.math.abs
-import kotlin.math.atan
-import kotlin.math.pow
-import kotlin.math.sqrt
+import kotlin.math.*
 
 /**
  * A class created to process TLE satellite data returned by our API
@@ -40,14 +37,26 @@ class TLEConversion {
     fun getLongitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
         var longitude = atan(pos[1] / pos[0])
-        Log.d("CONVERSION", "Longitude: $longitude")
+        Log.d("CONVERSION", "Longitude (Initial): $longitude")
+
+        // Check if our satelite is on the >=90deg side of the planet
+        if (pos[0] < 0) {
+            if (pos[1] > 0) {
+                longitude += PI
+            }
+            else {
+                longitude -= PI
+            }
+        }
+        Log.d("CONVERSION", "Longitude (Normalized): $longitude")
+
         longitude = Math.toDegrees(longitude)
         Log.d("CONVERSION", "Longitude (Degrees): $longitude")
         return longitude
     }
 
     fun getLatitude(satellite: String): Double {
-        // Paramenters for Newton's method
+        // Parameters for Newton's method
         val thresh = 0.01
         val maxIter = 10
 
@@ -84,14 +93,24 @@ class TLEConversion {
         return 1 + (pSquared + (1 - eccSquared) * pos[2].pow(2.0) * prev.pow(3.0)) / (cPrev - pSquared)
     }
 
+    // TODO: Cache results for consistent results and avoiding calculating SDP4 twice
     private fun getSatellitePosition(satellite: String): Array<Double> {
         sdp4.NoradByName(fileName, satellite)
         sdp4.GetPosVel(getJulianDate())
-        val pos: Array<Double> = arrayOf(sdp4.itsR[0] * 1000000, sdp4.itsR[1] * 1000000, sdp4.itsR[2] * 1000000)
+
+        // Flip the x and y axis as the library returns it backwards from the canonical ECEF system
+        // The units are in Gm, which appears to put distances near a value of ~1 (which unless I'm
+        // misremembering will lead to less floating point error).
+        val xScale = -1
+        val yScale = -1
+        val zScale = 1
+
+        val pos: Array<Double> = arrayOf(sdp4.itsR[0] * xScale, sdp4.itsR[1] * yScale, sdp4.itsR[2] * zScale)
         Log.d("CONVERSION", "Position: ${pos[0]}, ${pos[1]}, ${pos[2]}")
         return pos
     }
 
+    // TODO: Make consistent between invocations?
     private fun getJulianDate(): Double {
         /* Get the milliseconds since UT 1970-01-01T00:00:00 from system clock.
          * Convert to days then to JD. */
