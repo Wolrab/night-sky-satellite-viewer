@@ -85,54 +85,13 @@ class TLEConversion {
         return latitude
     }
 
-    // Leaving here for now, there's probably no good way to make this work as-is
-    fun getNotLatitude(satellite: String): Double {
-        // Parameters for Newton's method
-        val thresh = 0.01
-        val maxIter = 10
-
-        val pos = getSatellitePosition(satellite)
-
-        // TODO: This is all bad :/
-        var kPrev = 1.0 / (1 - eccSquared) // Initial estimate
-        Log.d("CONVERSION", "Latitude: k Initial: $kPrev")
-
-        var i = 0
-        var k = iterateK(pos, kPrev)
-        while (abs(k - kPrev) >= thresh && i < maxIter) {
-            Log.d("CONVERSION", "Latitude: k Iter:  $k")
-
-            kPrev = k
-            k = iterateK(pos, kPrev)
-            i += 1
-        }
-        Log.d("CONVERSION", "Latitude: k Final: $k")
-
-        val p = sqrt(pos[0].pow(2.0) + pos[1].pow(2.0))
-        var latitude = (k*pos[2])/p
-        latitude = atan(latitude)
-        Log.d("CONVERSION", "Latitude Final: $latitude")
-
-        latitude = Math.toDegrees(latitude)
-        Log.d("CONVERSION", "Latitude Final (Degrees): $latitude")
-        return latitude
-    }
-
-    private fun iterateK(pos: Array<Double>, prev: Double): Double {
-        val pSquared = pos[0].pow(2.0) + pos[1].pow(2.0)
-        var cPrev =
-            (pSquared + (1 - eccSquared) * pos[2].pow(2.0) * prev.pow(2.0)).pow(3.0 / 2.0)
-        cPrev /= a * eccSquared
-        return 1 + (pSquared + (1 - eccSquared) * pos[2].pow(2.0) * prev.pow(3.0)) / (cPrev - pSquared)
-    }
-
     // TODO: Cache results for consistent results and avoiding calculating SDP4 twice
     private fun getSatellitePosition(satellite: String): Array<Double> {
         sdp4.NoradByName(fileName, satellite)
         sdp4.GetPosVel(getJulianDate())
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
-        var factor: Double = 1/sdp4.itsR.min()!!
+        var factor: Double = 1/abs(sdp4.itsR.min()!!)
 
         // Increase minimum?
         factor *= 1000000

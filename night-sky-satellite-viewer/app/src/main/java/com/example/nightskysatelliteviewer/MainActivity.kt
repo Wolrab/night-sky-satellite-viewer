@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
         testSat = "NAVSTAR 58 (USA 190)"
         testSat = "G-SAT"
         testSat = "NAVSTAR 76 (USA 266)"
+        testSat = "RADSAT-U"
         Log.d("CONVERSION", "Satellite: $testSat")
         converter.getLatitude(testSat)
         converter.getLongitude(testSat)
