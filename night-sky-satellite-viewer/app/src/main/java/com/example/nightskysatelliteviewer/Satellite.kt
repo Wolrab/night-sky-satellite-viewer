@@ -1,10 +1,3 @@
 package com.example.nightskysatelliteviewer
 
-class Satellite(val name: String, val id: String, val epoch: Long,
-                val meanMotion: Double, val eccentricity: Double,
-                val inclination: Double, val raOfAscNode: Double,
-                val argOfPericenter: Double, val meanAnomaly: Double) {
-
-
-
-}
+class Satellite(val name: String, val id: String, val epoch: Long) { }

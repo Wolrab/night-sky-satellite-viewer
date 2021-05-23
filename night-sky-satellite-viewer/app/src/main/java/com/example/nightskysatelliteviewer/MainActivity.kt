@@ -15,10 +15,17 @@ class MainActivity : AppCompatActivity() {
 
         // TODO: NO NETWORK SCHENANIGANS ON MAIN THREAD
         // TODO: REMOVE POLICY BELOW WHEN NETWORK ACCESS OUTSIDE OF MAIN THREAD
-        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
-        StrictMode.setThreadPolicy(policy)
+        //val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        //StrictMode.setThreadPolicy(policy)
 
-        connorsDumbTestingMethod()
+        //connorsDumbTestingMethod()
+
+        walkersSillyTestingMethod()
+    }
+
+    private fun walkersSillyTestingMethod() {
+        SatelliteManager.initialize(applicationContext)
+        Log.d("walker", "database created")
     }
 
     private fun connorsDumbTestingMethod() {
