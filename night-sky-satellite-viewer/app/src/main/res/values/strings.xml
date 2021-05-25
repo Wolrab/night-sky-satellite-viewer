@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">Night Sky Satellite Viewer</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">MapBox</string>
+    <string name="mapbox_access_token">pk.eyJ1IjoiemF3aWNobWFuIiwiYSI6ImNrcDBjeTNuYzBicnYyb3BycG5rMHVwZm4ifQ.AnEyEBL5Q53_J2FfB2fHQA</string>
 </resources>
