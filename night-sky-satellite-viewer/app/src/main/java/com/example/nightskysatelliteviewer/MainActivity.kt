@@ -2,14 +2,12 @@ package com.example.nightskysatelliteviewer
 
 import TLEConversion
 import android.os.Bundle
-import android.os.StrictMode
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import java.io.File
-import java.net.URL
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
+import android.view.View
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.annotation.NonNull
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -24,14 +22,15 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
-import java.util.*
+
+const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
     private lateinit var map_style: Style
-    private var allSats = arrayListOf<mySatellite>()
+    private var allSats = arrayListOf<DisplaySatellite>()
     private var labelsize: Float = 15.0F
     private var stateLabelSymbolLayer: Layer? = null
 
@@ -42,7 +41,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token))
 
         setContentView(R.layout.activity_main)
@@ -52,12 +50,45 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         mapView?.getMapAsync(this)
 
-        allSats.add(mySatellite("Bellingham", "bham_id", LatLng(48.747789, -122.479255)))
-        allSats.add(mySatellite("Japan", "jpn_id", LatLng(35.478780, 137.472501)))
+        val tleFileName = "gp.txt"
+        createTemporaryFileFromUrl(this, tleFileName, tleUrlText)
+        val tleConversion = TLEConversion(tleFileName)
 
-        val refresh_button: FloatingActionButton = findViewById(R.id.reload)
-        refresh_button.setOnClickListener {
-            mapView!!.refreshDrawableState()
+        SatelliteManager.initialize(applicationContext, this)
+        SatelliteManager.onDbUpdateStart = {
+            toggleWaitNotifier(true)
+        }
+        SatelliteManager.onDbUpdateComplete = {
+            toggleWaitNotifier(false)
+            val len = Toast.LENGTH_SHORT
+            val finishedToast = Toast.makeText(applicationContext, "Finished updating!", len)
+            finishedToast.show()
+        }
+
+        for (i in 0 until SatelliteManager.numSatellites) {
+            val s = SatelliteManager.getSatelliteByNumericId(i)
+                //allSats.add(DisplaySatellite(s.name, s.id, LatLng(TODO: TLE CALCULATION USING s.epoch))
+        }
+
+        //TODO: Once the real satellites are working in loop above, get rid of these fake ones
+        allSats.add(DisplaySatellite("Bellingham", "bham_id", LatLng(48.747789, -122.479255)))
+        allSats.add(DisplaySatellite("Japan", "jpn_id", LatLng(35.478780, 137.472501)))
+
+        val refreshButton: FloatingActionButton = findViewById(R.id.reload)
+        refreshButton.setOnClickListener {
+            if (SatelliteManager.initialized && !SatelliteManager.waiting) {
+                SatelliteManager.updateAllSatellites(this)
+                mapView!!.refreshDrawableState()
+            }
+        }
+    }
+
+    fun toggleWaitNotifier(shown: Boolean) {
+        val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
+        if (shown) {
+            waitNotifier.visibility = View.VISIBLE
+        } else {
+            waitNotifier.visibility = View.INVISIBLE
         }
     }
 
@@ -142,46 +173,3 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         Toast.makeText(this, message(), Toast.LENGTH_LONG).show()
     }
 }
-
-/***************************************************************8
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        // TODO: NO NETWORK SCHENANIGANS ON MAIN THREAD
-        // TODO: REMOVE POLICY BELOW WHEN NETWORK ACCESS OUTSIDE OF MAIN THREAD
-        //val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
-        //StrictMode.setThreadPolicy(policy)
-
-        //connorsDumbTestingMethod()
-
-        walkersSillyTestingMethod()
-    }
-
-    private fun walkersSillyTestingMethod() {
-        SatelliteManager.initialize(applicationContext)
-        Log.d("walker", "database created")
-    }
-
-    private fun connorsDumbTestingMethod() {
-        val url = URL("http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle")
-        val file = File(filesDir, "gp.txt")
-        file.deleteOnExit()
-        file.writeText(url.readText())
-
-        val converter = TLEConversion(file.absolutePath)
-
-        var testSat: String
-        testSat = "NAVSTAR 77 (USA 289)"
-        testSat = "DELLINGR (RBLE)"
-        testSat = "NAVSTAR 56 (USA 180)"
-        testSat = "NAVSTAR 58 (USA 190)"
-        testSat = "G-SAT"
-        testSat = "NAVSTAR 76 (USA 266)"
-        Log.d("CONVERSION", "Satellite: $testSat")
-        converter.getLatitude(testSat)
-        converter.getLongitude(testSat)
-    }
-}
-*/

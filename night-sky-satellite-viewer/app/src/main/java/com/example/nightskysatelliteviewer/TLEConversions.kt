@@ -1,4 +1,5 @@
 import android.util.Log
+import com.example.nightskysatelliteviewer.Satellite
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import kotlin.math.*
 
@@ -54,7 +55,6 @@ class TLEConversion {
         Log.d("CONVERSION", "Longitude (Degrees): $longitude")
         return longitude
     }
-
 
     fun getLatitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)

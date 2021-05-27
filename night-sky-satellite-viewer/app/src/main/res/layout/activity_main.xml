@@ -11,26 +11,49 @@
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        />
+        tools:layout_editor_absoluteX="60dp"
+        tools:layout_editor_absoluteY="-42dp" />
+
     <FrameLayout
+        android:id="@+id/frameLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        android:scaleY="1.5"
-        android:scaleX="1.6"
         android:layout_marginRight="30sp"
-        android:layout_marginBottom="30sp" >
+        android:layout_marginBottom="30sp"
+        android:scaleX="1.6"
+        android:scaleY="1.5"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/reload"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:src="@drawable/refresh"
-            android:scaleX="0.7"
-            android:scaleY="0.7"
             android:backgroundTint="@color/white"
             android:gravity="bottom|right"
-            android:id="@+id/reload" />
+            android:scaleX="0.7"
+            android:scaleY="0.7"
+            android:src="@drawable/refresh" />
 
     </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/waitNotification"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="bottom|center"
+        app:layout_constraintBottom_toBottomOf="@id/frameLayout"
+        app:layout_constraintRight_toRightOf="@id/frameLayout"
+        android:orientation="horizontal">
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:text="@string/wait"
+            />
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
