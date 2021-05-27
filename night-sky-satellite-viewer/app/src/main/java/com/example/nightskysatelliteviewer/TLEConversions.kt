@@ -36,19 +36,8 @@ class TLEConversion {
 
     fun getLongitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
-        var longitude = atan(pos[1] / pos[0])
-        Log.d("CONVERSION", "Longitude (Initial): $longitude")
-
-        // Check if our satelite is on the >=90deg side of the planet
-        if (pos[0] < 0) {
-            if (pos[1] > 0) {
-                longitude += PI
-            }
-            else {
-                longitude -= PI
-            }
-        }
-        Log.d("CONVERSION", "Longitude (Normalized): $longitude")
+        var longitude = atan2(pos[1], pos[0])
+        Log.d("CONVERSION", "Longitude: $longitude")
 
         longitude = Math.toDegrees(longitude)
         Log.d("CONVERSION", "Longitude (Degrees): $longitude")
