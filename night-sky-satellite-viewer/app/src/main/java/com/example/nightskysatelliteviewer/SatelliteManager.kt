@@ -33,7 +33,6 @@ private val COL_EPOCH = "epoch"
 private val FAVORITES_TABLE_NAME = "satelliteFavoritesDB"
 
 object SatelliteManager {
-
     var numSatellites: Int = 0
 
     lateinit var satelliteDbHelper: SatelliteDBHelper
@@ -43,6 +42,8 @@ object SatelliteManager {
 
     var onDbUpdateComplete: (()->Unit)? = null
     var onDbUpdateStart: (()->Unit)? = null
+
+    val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context, activity: MainActivity) {
         satelliteDbHelper = SatelliteDBHelper(context)
@@ -58,7 +59,7 @@ object SatelliteManager {
     }
 
     fun updateAllSatellites(activity: MainActivity){
-        val updateJob = GlobalScope.launch {
+        val updateJob = dbScope.launch {
             activity.runOnUiThread(Runnable() {
                 onDbUpdateStart?.invoke()
             })
@@ -80,7 +81,7 @@ object SatelliteManager {
 
     fun addAllSatellitesFromCelestrakIfUninitialized(activity: MainActivity){
         if (!satelliteDbHelper.checkDbInitialized()) {
-            val updateJob = GlobalScope.launch {
+            val updateJob = dbScope.launch {
                 waiting = true
                 activity.runOnUiThread(Runnable() {
                     onDbUpdateStart?.invoke()

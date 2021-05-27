@@ -1,6 +1,14 @@
+import android.content.Context
 import android.util.Log
+import com.example.nightskysatelliteviewer.DisplaySatellite
 import com.example.nightskysatelliteviewer.Satellite
+import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.sdp4.SDP4
+import com.mapbox.mapboxsdk.geometry.LatLng
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import java.io.File
+import java.net.URL
 import kotlin.math.*
 
 /**
@@ -28,14 +36,33 @@ class TLEConversion {
 
     // SDP4 library
     private val sdp4 = SDP4()
-    private val fileName: String
+    private val tleName: String
 
-    constructor(fileName: String) {
+    private val converterScope = CoroutineScope(Job() + Dispatchers.IO)
+    private lateinit var urlReadJob: Deferred<Any>
+
+    constructor(callingContext: Context, tleName: String, tleText: String) {
+        createTemporaryFileFromUrl(callingContext, tleName, tleText)
         sdp4.Init()
-        this.fileName = fileName
+        this.tleName = tleName
     }
 
-    fun getLongitude(satellite: String): Double {
+    fun initConversionPipeline(outPipe: Channel<DisplaySatellite>) {
+        converterScope.launch {
+            // Wait until TLE is fully read in
+            urlReadJob.await()
+
+            for (i in 0 until SatelliteManager.numSatellites) {
+                val sat = SatelliteManager.getSatelliteByNumericId(i)
+                val lat = getLatitude(sat.name)
+                val long = getLatitude(sat.name)
+                outPipe.send(DisplaySatellite(sat.name, sat.id, LatLng(lat, long)))
+            }
+            outPipe.close()
+        }
+    }
+
+    private fun getLongitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
         var longitude = atan2(pos[1], pos[0])
         Log.d("CONVERSION", "Longitude: $longitude")
@@ -45,7 +72,7 @@ class TLEConversion {
         return longitude
     }
 
-    fun getLatitude(satellite: String): Double {
+    private fun getLatitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
 
         val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
@@ -76,7 +103,7 @@ class TLEConversion {
 
     // TODO: Cache results for consistent results and avoiding calculating SDP4 twice
     private fun getSatellitePosition(satellite: String): Array<Double> {
-        sdp4.NoradByName(fileName, satellite)
+        sdp4.NoradByName(tleName, satellite)
         sdp4.GetPosVel(getJulianDate())
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
@@ -107,5 +134,15 @@ class TLEConversion {
         val julianDate = System.currentTimeMillis().toDouble() / 86400000.0 + 587.5 - 10000.0
         Log.d("CONVERSION", "Julian Date: $julianDate")
         return julianDate
+    }
+
+    private fun createTemporaryFileFromUrl(context: Context, tleName: String, tleText: String): File {
+        val file = File(context.cacheDir, tleName)
+        file.deleteOnExit()
+        urlReadJob = converterScope.async {
+            val url = URL(tleText)
+            file.writeText(url.readText())
+        }
+        return file
     }
 }

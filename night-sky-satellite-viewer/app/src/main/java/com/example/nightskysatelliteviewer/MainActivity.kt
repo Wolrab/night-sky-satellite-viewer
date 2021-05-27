@@ -51,8 +51,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapView?.getMapAsync(this)
 
         val tleFileName = "gp.txt"
-        createTemporaryFileFromUrl(this, tleFileName, tleUrlText)
-        val tleConversion = TLEConversion(tleFileName)
+        val tleConversion = TLEConversion(this, tleFileName, tleUrlText)
 
         SatelliteManager.initialize(applicationContext, this)
         SatelliteManager.onDbUpdateStart = {
@@ -63,11 +62,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             val len = Toast.LENGTH_SHORT
             val finishedToast = Toast.makeText(applicationContext, "Finished updating!", len)
             finishedToast.show()
-        }
-
-        for (i in 0 until SatelliteManager.numSatellites) {
-            val s = SatelliteManager.getSatelliteByNumericId(i)
-                //allSats.add(DisplaySatellite(s.name, s.id, LatLng(TODO: TLE CALCULATION USING s.epoch))
         }
 
         //TODO: Once the real satellites are working in loop above, get rid of these fake ones
