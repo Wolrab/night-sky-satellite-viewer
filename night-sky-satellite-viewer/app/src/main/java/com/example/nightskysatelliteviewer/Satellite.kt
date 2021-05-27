@@ -1,10 +1,7 @@
 package com.example.nightskysatelliteviewer
 
-class Satellite(val name: String, val id: String, val epoch: Long,
-                val meanMotion: Double, val eccentricity: Double,
-                val inclination: Double, val raOfAscNode: Double,
-                val argOfPericenter: Double, val meanAnomaly: Double) {
+import com.mapbox.mapboxsdk.geometry.LatLng
 
+class DisplaySatellite(val name: String, val id: String, val loc: LatLng)
 
-
-}
+class Satellite(val name: String, val id: String, val epoch: Long)
