@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
 
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 
+const val funnyDeathBlobToggle = false
+
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private var mapView: MapView? = null
@@ -135,8 +137,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                         stateLabelSymbolLayer = style.getLayer("state-label")
 
                         val symbolManager = SymbolManager(mapView!!, map, style)
-                        symbolManager.setIconAllowOverlap(true)
-                        symbolManager.setTextAllowOverlap(true)
+                        symbolManager.setIconAllowOverlap(funnyDeathBlobToggle)
+                        symbolManager.setTextAllowOverlap(funnyDeathBlobToggle)
 
                         for (item in allSats) {
                             var id = item.id
