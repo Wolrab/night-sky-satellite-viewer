@@ -33,6 +33,7 @@ private val COL_EPOCH = "epoch"
 private val FAVORITES_TABLE_NAME = "satelliteFavoritesDB"
 
 object SatelliteManager {
+
     var numSatellites: Int = 0
 
     lateinit var satelliteDbHelper: SatelliteDBHelper
@@ -43,7 +44,7 @@ object SatelliteManager {
     var onDbUpdateComplete: (()->Unit)? = null
     var onDbUpdateStart: (()->Unit)? = null
 
-    val dbScope = CoroutineScope(Job() + Dispatchers.IO)
+    val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context, activity: MainActivity) {
         satelliteDbHelper = SatelliteDBHelper(context)
@@ -59,7 +60,7 @@ object SatelliteManager {
     }
 
     fun updateAllSatellites(activity: MainActivity){
-        val updateJob = dbScope.launch {
+        val updateJob = conversionScope.launch {
             activity.runOnUiThread(Runnable() {
                 onDbUpdateStart?.invoke()
             })
@@ -81,7 +82,7 @@ object SatelliteManager {
 
     fun addAllSatellitesFromCelestrakIfUninitialized(activity: MainActivity){
         if (!satelliteDbHelper.checkDbInitialized()) {
-            val updateJob = dbScope.launch {
+            val updateJob = conversionScope.launch {
                 waiting = true
                 activity.runOnUiThread(Runnable() {
                     onDbUpdateStart?.invoke()
@@ -190,28 +191,34 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     fun getSatelliteByNumericId(id: String): Satellite {
-        val database = this.writableDatabase
-        val satelliteQuery = "SELECT * FROM $DATABASE_NAME WHERE $COL_ID = '$id'"
+        val database = this.readableDatabase
+        val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_ID = '$id'"
         val result = database.rawQuery(satelliteQuery, null)
+        result.moveToFirst()
+        Log.d("ERM", "WHY")
         val name = result.getString(result.getColumnIndex(COL_NAME))
+        Log.d("ERM", "WHY2")
         val celestrakId = result.getString(result.getColumnIndex(COL_CELESTRAKID))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
+        Log.d("ERM", "WHY3")
         return Satellite(name, celestrakId, epoch)
     }
 
     fun getSatelliteByCelestrakId(celestrakId: String): Satellite {
-        val database = this.writableDatabase
-        val satelliteQuery = "SELECT * FROM $DATABASE_NAME WHERE $COL_CELESTRAKID = '$celestrakId'"
+        val database = this.readableDatabase
+        val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_CELESTRAKID = '$celestrakId'"
         val result = database.rawQuery(satelliteQuery, null)
+        result.moveToFirst()
         val name = result.getString(result.getColumnIndex(COL_NAME))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
         return Satellite(name, celestrakId, epoch)
     }
 
     fun getSatelliteByName(name: String): Satellite {
-        val database = this.writableDatabase
-        val satelliteQuery = "SELECT * FROM $DATABASE_NAME WHERE $COL_NAME = '$name'"
+        val database = this.readableDatabase
+        val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_NAME = '$name'"
         val result = database.rawQuery(satelliteQuery, null)
+        result.moveToFirst()
         val celestrakId = result.getString(result.getColumnIndex(COL_CELESTRAKID))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
         return Satellite(name, celestrakId, epoch)

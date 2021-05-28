@@ -6,6 +6,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
+import android.util.Log
+import android.view.Display
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -22,6 +24,11 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 
@@ -33,6 +40,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var allSats = arrayListOf<DisplaySatellite>()
     private var labelsize: Float = 15.0F
     private var stateLabelSymbolLayer: Layer? = null
+
+    val conversionPipe = Channel<DisplaySatellite>()
 
     val LAYER_ID = "MAIN"
     val SOURCE_ID = "SAT_DB"
@@ -57,12 +66,30 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         SatelliteManager.onDbUpdateStart = {
             toggleWaitNotifier(true)
         }
+
         SatelliteManager.onDbUpdateComplete = {
             toggleWaitNotifier(false)
             val len = Toast.LENGTH_SHORT
             val finishedToast = Toast.makeText(applicationContext, "Finished updating!", len)
             finishedToast.show()
+
+            tleConversion.initConversionPipeline(conversionPipe)
+            SatelliteManager.conversionScope.launch {
+                Log.d("BIGDUMB", "Converting?")
+                for (sat in conversionPipe) {
+                    Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
+                    allSats.add(sat)
+                }
+
+                runOnUiThread(kotlinx.coroutines.Runnable() {
+                    mapView!!.refreshDrawableState()
+                })
+
+                Log.d("BIGDUMB", "Done lol")
+            }
         }
+
+
 
         //TODO: Once the real satellites are working in loop above, get rid of these fake ones
         allSats.add(DisplaySatellite("Bellingham", "bham_id", LatLng(48.747789, -122.479255)))

@@ -38,28 +38,35 @@ class TLEConversion {
     private val sdp4 = SDP4()
     private val tleName: String
 
-    private val converterScope = CoroutineScope(Job() + Dispatchers.IO)
     private lateinit var urlReadJob: Deferred<Any>
 
     constructor(callingContext: Context, tleName: String, tleText: String) {
-        createTemporaryFileFromUrl(callingContext, tleName, tleText)
+        val file = createTemporaryFileFromUrl(callingContext, tleName, tleText)
         sdp4.Init()
-        this.tleName = tleName
+        this.tleName = file.absolutePath
     }
 
-    fun initConversionPipeline(outPipe: Channel<DisplaySatellite>) {
-        converterScope.launch {
+    fun initConversionPipeline(outPipe: Channel<DisplaySatellite>): Deferred<Any> {
+        val conversionJob = SatelliteManager.conversionScope.async {
             // Wait until TLE is fully read in
+            Log.d("CONVERSION-SEND", "Reading in from URL")
             urlReadJob.await()
+            Log.d("CONVERSION-SEND", "Finished reading from URL")
 
-            for (i in 0 until SatelliteManager.numSatellites) {
+            for (i in 1 until SatelliteManager.numSatellites+1) {
+                Log.d("CONVERSION-SEND", "help")
                 val sat = SatelliteManager.getSatelliteByNumericId(i)
                 val lat = getLatitude(sat.name)
-                val long = getLatitude(sat.name)
-                outPipe.send(DisplaySatellite(sat.name, sat.id, LatLng(lat, long)))
+                val long = getLongitude(sat.name)
+                val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
+                Log.d("CONVERSION-SEND", "help2")
+                outPipe.send(satOut)
+                Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
             }
             outPipe.close()
+            Log.d("CONVERSION-SEND", "CLOSED MOTHERUFKCERS")
         }
+        return conversionJob
     }
 
     private fun getLongitude(satellite: String): Double {
@@ -73,14 +80,16 @@ class TLEConversion {
     }
 
     private fun getLatitude(satellite: String): Double {
+        Log.d("PROBLEM?", "AHHHHHHH")
         val pos = getSatellitePosition(satellite)
+        Log.d("PROBLEM?", "EEEEEEEEEEEEEEEEEEEEE")
 
         val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
         val er2 = (a.pow(2) - b.pow(2))/b.pow(2)
         val F = 54 * b.pow(2) * pos[2].pow(2)
         val G = r.pow(2) + (1-eccSquared)*pos[2].pow(2)-eccSquared*(a.pow(2) - b.pow(2))
         val c = (eccSquared.pow(2)*F*r.pow(2))/G.pow(3)
-        val s = (1+c+sqrt(c.pow(2)+2*c)).pow(0.333333) // NaN HERE!
+        val s = (1+c+sqrt(c.pow(2)+2*c)).pow(0.333333)
         val P = F/(3*(s+1+1/s)*G.pow(2))
         val Q = sqrt(1+2*eccSquared.pow(2)*P)
         val r0 = -(P*eccSquared*r)/(1+Q)+sqrt(0.5*a.pow(2)*(1+1/Q)-(P*(1-eccSquared)*pos[2])/(Q*(1+Q)-0.5*P*r.pow(2)))
@@ -137,9 +146,9 @@ class TLEConversion {
     }
 
     private fun createTemporaryFileFromUrl(context: Context, tleName: String, tleText: String): File {
-        val file = File(context.cacheDir, tleName)
+        val file = File(context.filesDir, tleName)
         file.deleteOnExit()
-        urlReadJob = converterScope.async {
+        urlReadJob = SatelliteManager.conversionScope.async {
             val url = URL(tleText)
             file.writeText(url.readText())
         }
