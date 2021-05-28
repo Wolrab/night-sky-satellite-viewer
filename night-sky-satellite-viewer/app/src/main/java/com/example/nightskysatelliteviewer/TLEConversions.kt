@@ -48,38 +48,38 @@ class TLEConversion {
     fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>): Deferred<Any> {
         return SatelliteManager.conversionScope.async {
             // Wait until TLE is fully read in
-            Log.d("CONVERSION-SEND", "Reading in from URL")
+            //Log.d("CONVERSION-SEND", "Reading in from URL")
             urlReadJob.await()
-            Log.d("CONVERSION-SEND", "Finished reading from URL")
+            //Log.d("CONVERSION-SEND", "Finished reading from URL")
 
-            Log.d("CONVERSION-SEND", "There are this many: ${SatelliteManager.numSatellites}")
+            //Log.d("CONVERSION-SEND", "There are this many: ${SatelliteManager.numSatellites}")
             for (i in 1 until SatelliteManager.numSatellites+1) {
                 val sat = SatelliteManager.getSatelliteByNumericId(i)
                 val lat = getLatitude(sat.name)
                 val long = getLongitude(sat.name)
                 val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
                 outPipe.send(satOut)
-                Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
+                //Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
             }
             outPipe.close()
-            Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
+            //Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
         }
     }
 
     private fun getLongitude(satellite: String): Double {
         val pos = getSatellitePosition(satellite)
         var longitude = atan2(pos[1], pos[0])
-        Log.d("CONVERSION", "Longitude: $longitude")
+        //Log.d("CONVERSION", "Longitude: $longitude")
 
         longitude = Math.toDegrees(longitude)
-        Log.d("CONVERSION", "Longitude (Degrees): $longitude")
+        //Log.d("CONVERSION", "Longitude (Degrees): $longitude")
         return longitude
     }
 
     private fun getLatitude(satellite: String): Double {
-        Log.d("PROBLEM?", "AHHHHHHH")
+        //Log.d("PROBLEM?", "AHHHHHHH")
         val pos = getSatellitePosition(satellite)
-        Log.d("PROBLEM?", "EEEEEEEEEEEEEEEEEEEEE")
+        //Log.d("PROBLEM?", "EEEEEEEEEEEEEEEEEEEEE")
 
         val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
         val er2 = (a.pow(2) - b.pow(2))/b.pow(2)
@@ -97,12 +97,12 @@ class TLEConversion {
         val h = U*(1-b.pow(2)/(a*V))
         val ratio = (pos[2]+er2*z0)/r
         var latitude = atan(ratio)
-        Log.d("CONVERSION", "Latitude: Vars: $r $er2 $F $G $c $s $P $Q $r0 $U $V $z0")
-        Log.d("CONVERSION", "Latitude: Ratio: $ratio")
-        Log.d("CONVERSION", "Latitude: Latitude: $latitude")
+        //Log.d("CONVERSION", "Latitude: Vars: $r $er2 $F $G $c $s $P $Q $r0 $U $V $z0")
+        //Log.d("CONVERSION", "Latitude: Ratio: $ratio")
+        //Log.d("CONVERSION", "Latitude: Latitude: $latitude")
 
         latitude = Math.toDegrees(latitude)
-        Log.d("CONVERSION", "Latitude: Degrees: $latitude")
+        //Log.d("CONVERSION", "Latitude: Degrees: $latitude")
 
         return latitude
     }
@@ -126,7 +126,7 @@ class TLEConversion {
         val zScale = factor
 
         val pos: Array<Double> = arrayOf(sdp4.itsR[0] * xScale, sdp4.itsR[1] * yScale, sdp4.itsR[2] * zScale)
-        Log.d("CONVERSION", "Position: ${pos[0]}, ${pos[1]}, ${pos[2]}")
+        //Log.d("CONVERSION", "Position: ${pos[0]}, ${pos[1]}, ${pos[2]}")
         return pos
     }
 
@@ -138,7 +138,7 @@ class TLEConversion {
         /* This was taken from the Times class, and manual checking against his comments
          * in that file verifies this is accurate (unless his comments aren't :/) */
         val julianDate = System.currentTimeMillis().toDouble() / 86400000.0 + 587.5 - 10000.0
-        Log.d("CONVERSION", "Julian Date: $julianDate")
+        //Log.d("CONVERSION", "Julian Date: $julianDate")
         return julianDate
     }
 

@@ -93,12 +93,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         toggleWaitNotifier(true, "Updating satellite positions...")
         val conversionJob = tleConversion.initConversionPipelineAsync(conversionPipe)
         SatelliteManager.conversionScope.launch {
-            Log.d("BIGDUMB", "GETTING FROM PIPE NOM NOM")
+            //Log.d("BIGDUMB", "GETTING FROM PIPE NOM NOM")
             for (sat in conversionPipe) {
-                Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
+                //Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
                 allSats.add(sat)
             }
-            Log.d("BIGDUMB", "DONE GETTING FROM PIPE")
+            //Log.d("BIGDUMB", "DONE GETTING FROM PIPE")
             runOnUiThread(kotlinx.coroutines.Runnable() {
                 updateMap()
                 mapView!!.refreshDrawableState()
@@ -140,7 +140,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                         symbolManager.setIconAllowOverlap(funnyDeathBlobToggle)
                         symbolManager.setTextAllowOverlap(funnyDeathBlobToggle)
 
-                        for (item in allSats) {
+                        var i = 0
+                        while (i < allSats.size) {
+                            val item = allSats[i]
                             var id = item.id
                             var loc = item.loc
                             var name = item.name
@@ -159,6 +161,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                                 true
 
                             }
+                            i += 20
                         }
                         stateLabelSymbolLayer!!.setProperties(
                                 textIgnorePlacement(true),

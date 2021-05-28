@@ -64,14 +64,14 @@ object SatelliteManager {
         val updateJob = conversionScope.launch {
             onDbUpdateStart?.invoke()
             waiting = true
-            Log.d("DATABASE_DEBUG", "Starting database update")
+            //Log.d("DATABASE_DEBUG", "Starting database update")
             val satelliteXmlElements = getSatelliteNodeList()
             if (satelliteXmlElements != null) {
                 for (i in 0 until satelliteXmlElements.length) {
                     satelliteDbHelper.updateSatelliteFromXml((satelliteXmlElements.item(i) as Element))
                 }
             }
-            Log.d("DATABASE_DEBUG", "Finished database update")
+            //Log.d("DATABASE_DEBUG", "Finished database update")
             waiting = false
             onDbUpdateComplete?.invoke()
         }
@@ -81,14 +81,14 @@ object SatelliteManager {
         satelliteDbHelper = SatelliteDBHelper(context)
         if (satelliteDbHelper.checkDbInitialized(context)) {
             numSatellites = satelliteDbHelper.getNumSatellites()
-            Log.d("DATABASE_DEBUG", "found existing database with $numSatellites")
+            //Log.d("DATABASE_DEBUG", "found existing database with $numSatellites")
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {
             val updateJob = conversionScope.launch {
             waiting = true
             onDbUpdateStart?.invoke()
-            Log.d("DATABASE_DEBUG", "Starting database creation")
+            //("DATABASE_DEBUG", "Starting database creation")
             val satelliteXmlElements = getSatelliteNodeList()
             if (satelliteXmlElements != null) {
                 numSatellites = satelliteXmlElements.length
@@ -96,7 +96,7 @@ object SatelliteManager {
                     satelliteDbHelper.addSatelliteFromXml((satelliteXmlElements.item(i) as Element))
                 }
             }
-            Log.d("DATABASE_DEBUG", "Finished database creation")
+            //Log.d("DATABASE_DEBUG", "Finished database creation")
             waiting = false
             onDbUpdateComplete?.invoke()
             }
