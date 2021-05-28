@@ -113,14 +113,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     fun toggleWaitNotifier(shown: Boolean, displayText: String) {
-        val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
-        if (shown) {
-            waitNotifier.visibility = View.VISIBLE
-            val waitText = findViewById<TextView>(R.id.waitText)
-            waitText.text = displayText
-        } else {
-            waitNotifier.visibility = View.INVISIBLE
-        }
+        runOnUiThread(kotlinx.coroutines.Runnable() {
+            val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
+            if (shown) {
+                waitNotifier.visibility = View.VISIBLE
+                val waitText = findViewById<TextView>(R.id.waitText)
+                waitText.text = displayText
+            } else {
+                waitNotifier.visibility = View.INVISIBLE
+            }
+        })
     }
 
     private fun updateMap() {
