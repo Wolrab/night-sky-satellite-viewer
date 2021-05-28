@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
-import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.LinearLayout
@@ -64,8 +63,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             runOnUiThread(kotlinx.coroutines.Runnable() {
                 toggleWaitNotifier(false, "")
                 showToast("Done updating database!")
-                configureSatellitePositions(tleConversion)
             });
+            configureSatellitePositions(tleConversion)
         }
 
         SatelliteManager.initialize(applicationContext, this)
@@ -90,17 +89,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun configureSatellitePositions(tleConversion: TLEConversion) {
         toggleWaitNotifier(true, "Updating satellite positions...")
-        tleConversion.initConversionPipeline(conversionPipe)
+        val conversionJob = tleConversion.initConversionPipelineAsync(conversionPipe)
         SatelliteManager.conversionScope.launch {
-            Log.d("BIGDUMB", "Converting?")
+            Log.d("BIGDUMB", "GETTING FROM PIPE NOM NOM")
             for (sat in conversionPipe) {
                 Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
                 allSats.add(sat)
             }
-
-            mapView!!.refreshDrawableState()
-
+            Log.d("BIGDUMB", "DONE GETTING FROM PIPE")
             runOnUiThread(kotlinx.coroutines.Runnable() {
+                updateMap()
+                mapView!!.refreshDrawableState()
                 showToast("Done updating positions!")
                 toggleWaitNotifier(false, "")
             })
@@ -124,46 +123,50 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun updateMap() {
+        map.setStyle(Style.Builder().fromUri(Style.MAPBOX_STREETS)
+                .withImage(ICON_ID, BitmapFactory.decodeResource(
+                        this.getResources(), R.drawable.sat)),
+                object : Style.OnStyleLoaded {
+                    override fun onStyleLoaded(@NonNull style: Style) {
+                        map_style = style
+                        stateLabelSymbolLayer = style.getLayer("state-label")
+
+                        val symbolManager = SymbolManager(mapView!!, map, style)
+                        symbolManager.setIconAllowOverlap(true)
+                        symbolManager.setTextAllowOverlap(true)
+
+                        for (item in allSats) {
+                            var id = item.id
+                            var loc = item.loc
+                            var name = item.name
+
+                            val symbol = symbolManager.create(SymbolOptions()
+                                    .withLatLng(loc)
+                                    .withIconImage(ICON_ID)
+                                    .withIconSize(.50f))
+                            symbol.textField = name
+                            symbol.textSize = labelsize
+                            symbol.textOffset = PointF(2f, 2f)
+                            symbolManager.update(symbol)
+
+                            symbolManager.addClickListener { symbol ->
+                                toast { "You clicked the " + symbol.textField + " satellite!" }
+                                true
+
+                            }
+                        }
+                        stateLabelSymbolLayer!!.setProperties(
+                                textIgnorePlacement(true),
+                                textAllowOverlap(true),
+                                textAnchor(Property.TEXT_ANCHOR_BOTTOM))
+                    }
+                })
+    }
+
     override fun onMapReady(mapboxMap: MapboxMap) {
         map = mapboxMap
-        mapboxMap.setStyle(Style.Builder().fromUri(Style.MAPBOX_STREETS)
-            .withImage(ICON_ID, BitmapFactory.decodeResource(
-                this.getResources(), R.drawable.sat)),
-            object : Style.OnStyleLoaded {
-                override fun onStyleLoaded(@NonNull style: Style) {
-                    map_style = style
-                    stateLabelSymbolLayer = style.getLayer("state-label")
-
-                    val symbolManager = SymbolManager(mapView!!, mapboxMap, style)
-                    symbolManager.setIconAllowOverlap(true)
-                    symbolManager.setTextAllowOverlap(true)
-
-                    for (item in allSats) {
-                        var id = item.id
-                        var loc = item.loc
-                        var name = item.name
-
-                        val symbol = symbolManager.create(SymbolOptions()
-                            .withLatLng(loc)
-                            .withIconImage(ICON_ID)
-                            .withIconSize(.50f))
-                        symbol.textField = name
-                        symbol.textSize = labelsize
-                        symbol.textOffset = PointF(2f, 2f)
-                        symbolManager.update(symbol)
-
-                        symbolManager.addClickListener { symbol ->
-                            toast { "You clicked the " + symbol.textField + " satellite!" }
-                            true
-
-                        }
-                    }
-                    stateLabelSymbolLayer!!.setProperties(
-                        textIgnorePlacement(true),
-                        textAllowOverlap(true),
-                        textAnchor(Property.TEXT_ANCHOR_BOTTOM))
-                }
-            })
+        updateMap()
     }
 
     public override fun onResume() {

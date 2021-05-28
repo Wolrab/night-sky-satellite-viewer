@@ -2,6 +2,7 @@ package com.example.nightskysatelliteviewer
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.DatabaseUtils
 import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
@@ -79,7 +80,8 @@ object SatelliteManager {
     private fun createOrFindDb(context: Context){
         satelliteDbHelper = SatelliteDBHelper(context)
         if (satelliteDbHelper.checkDbInitialized(context)) {
-            Log.d("DATABASE_DEBUG", "found existing database")
+            numSatellites = satelliteDbHelper.getNumSatellites()
+            Log.d("DATABASE_DEBUG", "found existing database with $numSatellites")
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {
@@ -162,6 +164,11 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         return r
     }
 
+    fun getNumSatellites(): Int {
+        satellitesDb
+        return DatabaseUtils.queryNumEntries(satellitesDb, ALL_SATS_TABLE_NAME, null, null).toInt()
+    }
+
     fun updateSatelliteFromXml(xmlElement: Element) {
         val name = getElementContent(xmlElement, "OBJECT_NAME")
         val id = getElementContent(xmlElement, "OBJECT_ID")
@@ -198,12 +205,10 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_ID = '$id'"
         val result = database.rawQuery(satelliteQuery, null)
         result.moveToFirst()
-        Log.d("ERM", "WHY")
         val name = result.getString(result.getColumnIndex(COL_NAME))
-        Log.d("ERM", "WHY2")
         val celestrakId = result.getString(result.getColumnIndex(COL_CELESTRAKID))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
-        Log.d("ERM", "WHY3")
+        result.close()
         return Satellite(name, celestrakId, epoch)
     }
 
@@ -214,6 +219,7 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         result.moveToFirst()
         val name = result.getString(result.getColumnIndex(COL_NAME))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
+        result.close()
         return Satellite(name, celestrakId, epoch)
     }
 
@@ -224,6 +230,7 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         result.moveToFirst()
         val celestrakId = result.getString(result.getColumnIndex(COL_CELESTRAKID))
         val epoch = result.getString(result.getColumnIndex(COL_EPOCH)).toLong()
+        result.close()
         return Satellite(name, celestrakId, epoch)
     }
 }

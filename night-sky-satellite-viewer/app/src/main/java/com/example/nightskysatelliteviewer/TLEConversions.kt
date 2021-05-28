@@ -1,7 +1,6 @@
 import android.content.Context
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
-import com.example.nightskysatelliteviewer.Satellite
 import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -46,13 +45,14 @@ class TLEConversion {
         this.tleName = file.absolutePath
     }
 
-    fun initConversionPipeline(outPipe: Channel<DisplaySatellite>): Deferred<Any> {
-        val conversionJob = SatelliteManager.conversionScope.async {
+    fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>): Deferred<Any> {
+        return SatelliteManager.conversionScope.async {
             // Wait until TLE is fully read in
             Log.d("CONVERSION-SEND", "Reading in from URL")
             urlReadJob.await()
             Log.d("CONVERSION-SEND", "Finished reading from URL")
 
+            Log.d("CONVERSION-SEND", "There are this many: ${SatelliteManager.numSatellites}")
             for (i in 1 until SatelliteManager.numSatellites+1) {
                 val sat = SatelliteManager.getSatelliteByNumericId(i)
                 val lat = getLatitude(sat.name)
@@ -64,7 +64,6 @@ class TLEConversion {
             outPipe.close()
             Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
         }
-        return conversionJob
     }
 
     private fun getLongitude(satellite: String): Double {
