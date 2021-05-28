@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
 import android.util.Log
 import kotlinx.coroutines.*
@@ -47,8 +48,7 @@ object SatelliteManager {
     val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context, activity: MainActivity) {
-        satelliteDbHelper = SatelliteDBHelper(context)
-        addAllSatellitesFromCelestrakIfUninitialized(activity)
+        createOrFindDb(context)
         initialized = true
     }
 
@@ -59,11 +59,9 @@ object SatelliteManager {
         return xmlDoc.getElementsByTagName("body")
     }
 
-    fun updateAllSatellites(activity: MainActivity){
+    fun updateAllSatellites(){
         val updateJob = conversionScope.launch {
-            activity.runOnUiThread(Runnable() {
-                onDbUpdateStart?.invoke()
-            })
+            onDbUpdateStart?.invoke()
             waiting = true
             Log.d("DATABASE_DEBUG", "Starting database update")
             val satelliteXmlElements = getSatelliteNodeList()
@@ -74,32 +72,31 @@ object SatelliteManager {
             }
             Log.d("DATABASE_DEBUG", "Finished database update")
             waiting = false
-            activity.runOnUiThread(Runnable() {
-                onDbUpdateComplete?.invoke()
-            })
+            onDbUpdateComplete?.invoke()
         }
     }
 
-    fun addAllSatellitesFromCelestrakIfUninitialized(activity: MainActivity){
-        if (!satelliteDbHelper.checkDbInitialized()) {
+    private fun createOrFindDb(context: Context){
+        satelliteDbHelper = SatelliteDBHelper(context)
+        if (satelliteDbHelper.checkDbInitialized(context)) {
+            Log.d("DATABASE_DEBUG", "found existing database")
+            onDbUpdateComplete?.invoke()
+            waiting = false
+        } else {
             val updateJob = conversionScope.launch {
-                waiting = true
-                activity.runOnUiThread(Runnable() {
-                    onDbUpdateStart?.invoke()
-                })
-                Log.d("DATABASE_DEBUG", "Starting database creation")
-                val satelliteXmlElements = getSatelliteNodeList()
-                if (satelliteXmlElements != null) {
-                    numSatellites = satelliteXmlElements.length
-                    for (i in 0 until satelliteXmlElements.length) {
-                        satelliteDbHelper.addSatelliteFromXml((satelliteXmlElements.item(i) as Element))
-                    }
+            waiting = true
+            onDbUpdateStart?.invoke()
+            Log.d("DATABASE_DEBUG", "Starting database creation")
+            val satelliteXmlElements = getSatelliteNodeList()
+            if (satelliteXmlElements != null) {
+                numSatellites = satelliteXmlElements.length
+                for (i in 0 until satelliteXmlElements.length) {
+                    satelliteDbHelper.addSatelliteFromXml((satelliteXmlElements.item(i) as Element))
                 }
-                Log.d("DATABASE_DEBUG", "Finished database creation")
-                waiting = false
-                activity.runOnUiThread(Runnable() {
-                    onDbUpdateComplete?.invoke()
-                })
+            }
+            Log.d("DATABASE_DEBUG", "Finished database creation")
+            waiting = false
+            onDbUpdateComplete?.invoke()
             }
         }
     }
@@ -136,27 +133,33 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
 
     private var DROP_MAIN_TABLE = "DROP TABLE IF EXISTS $ALL_SATS_TABLE_NAME"
 
+    private lateinit var satellitesDb: SQLiteDatabase
+
     override fun onCreate(db: SQLiteDatabase?) {
-        db?.execSQL(CREATE_TABLE)
+        try {
+            db?.execSQL(CREATE_TABLE)
+            satellitesDb = db!!
+        } catch (e: SQLiteException){
+            throw Exception("Error creating database")
+        }
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        onCreate(db)
+        throw Exception("Can't upgrade database")
     }
 
-    fun checkDbInitialized(): Boolean {
+    fun checkDbInitialized(context: Context): Boolean {
+        var r = true
         try {
-            val database = this.writableDatabase
-            val satelliteQuery = "SELECT * FROM $DATABASE_NAME " +
-                    "WHERE NAME='$ALL_SATS_TABLE_NAME' AND TYPE='TABLE'"
-            val cursor = database.rawQuery(satelliteQuery, null)
-            return true
+            val databasePath = context.getDatabasePath(DATABASE_NAME)
+            val tempDb = openDatabase(databasePath.absolutePath, null,
+                    SQLiteDatabase.OPEN_READWRITE);
+            r = true
+            satellitesDb = tempDb
         } catch (e: SQLiteException){
-            if (e.message!!.contains("no such table")){
-                return false
-            }
+            r = false
         }
-        return false
+        return r
     }
 
     fun updateSatelliteFromXml(xmlElement: Element) {
@@ -191,7 +194,7 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     fun getSatelliteByNumericId(id: String): Satellite {
-        val database = this.readableDatabase
+        val database = satellitesDb
         val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_ID = '$id'"
         val result = database.rawQuery(satelliteQuery, null)
         result.moveToFirst()
@@ -205,7 +208,7 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     fun getSatelliteByCelestrakId(celestrakId: String): Satellite {
-        val database = this.readableDatabase
+        val database = satellitesDb
         val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_CELESTRAKID = '$celestrakId'"
         val result = database.rawQuery(satelliteQuery, null)
         result.moveToFirst()
@@ -215,7 +218,7 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     fun getSatelliteByName(name: String): Satellite {
-        val database = this.readableDatabase
+        val database = satellitesDb
         val satelliteQuery = "SELECT * FROM $ALL_SATS_TABLE_NAME WHERE $COL_NAME = '$name'"
         val result = database.rawQuery(satelliteQuery, null)
         result.moveToFirst()

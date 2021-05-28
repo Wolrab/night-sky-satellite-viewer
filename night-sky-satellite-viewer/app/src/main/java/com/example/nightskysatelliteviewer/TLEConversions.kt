@@ -54,17 +54,15 @@ class TLEConversion {
             Log.d("CONVERSION-SEND", "Finished reading from URL")
 
             for (i in 1 until SatelliteManager.numSatellites+1) {
-                Log.d("CONVERSION-SEND", "help")
                 val sat = SatelliteManager.getSatelliteByNumericId(i)
                 val lat = getLatitude(sat.name)
                 val long = getLongitude(sat.name)
                 val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
-                Log.d("CONVERSION-SEND", "help2")
                 outPipe.send(satOut)
                 Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
             }
             outPipe.close()
-            Log.d("CONVERSION-SEND", "CLOSED MOTHERUFKCERS")
+            Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
         }
         return conversionJob
     }

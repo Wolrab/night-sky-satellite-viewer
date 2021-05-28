@@ -6,10 +6,11 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
+import android.os.Looper
 import android.util.Log
-import android.view.Display
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.NonNull
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -24,9 +25,6 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
@@ -62,34 +60,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val tleFileName = "gp.txt"
         val tleConversion = TLEConversion(this, tleFileName, tleUrlText)
 
+        SatelliteManager.onDbUpdateComplete = {
+            runOnUiThread(kotlinx.coroutines.Runnable() {
+                toggleWaitNotifier(false, "")
+                showToast("Done updating database!")
+                configureSatellitePositions(tleConversion)
+            });
+        }
+
         SatelliteManager.initialize(applicationContext, this)
         SatelliteManager.onDbUpdateStart = {
-            toggleWaitNotifier(true)
+            runOnUiThread(kotlinx.coroutines.Runnable() {
+                toggleWaitNotifier(true, "Updating database...")
+            })
         }
-
-        SatelliteManager.onDbUpdateComplete = {
-            toggleWaitNotifier(false)
-            val len = Toast.LENGTH_SHORT
-            val finishedToast = Toast.makeText(applicationContext, "Finished updating!", len)
-            finishedToast.show()
-
-            tleConversion.initConversionPipeline(conversionPipe)
-            SatelliteManager.conversionScope.launch {
-                Log.d("BIGDUMB", "Converting?")
-                for (sat in conversionPipe) {
-                    Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
-                    allSats.add(sat)
-                }
-
-                runOnUiThread(kotlinx.coroutines.Runnable() {
-                    mapView!!.refreshDrawableState()
-                })
-
-                Log.d("BIGDUMB", "Done lol")
-            }
-        }
-
-
 
         //TODO: Once the real satellites are working in loop above, get rid of these fake ones
         allSats.add(DisplaySatellite("Bellingham", "bham_id", LatLng(48.747789, -122.479255)))
@@ -98,16 +82,43 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val refreshButton: FloatingActionButton = findViewById(R.id.reload)
         refreshButton.setOnClickListener {
             if (SatelliteManager.initialized && !SatelliteManager.waiting) {
-                SatelliteManager.updateAllSatellites(this)
+                configureSatellitePositions(tleConversion)
                 mapView!!.refreshDrawableState()
             }
         }
     }
 
-    fun toggleWaitNotifier(shown: Boolean) {
+    private fun configureSatellitePositions(tleConversion: TLEConversion) {
+        toggleWaitNotifier(true, "Updating satellite positions...")
+        tleConversion.initConversionPipeline(conversionPipe)
+        SatelliteManager.conversionScope.launch {
+            Log.d("BIGDUMB", "Converting?")
+            for (sat in conversionPipe) {
+                Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
+                allSats.add(sat)
+            }
+
+            mapView!!.refreshDrawableState()
+
+            runOnUiThread(kotlinx.coroutines.Runnable() {
+                showToast("Done updating positions!")
+                toggleWaitNotifier(false, "")
+            })
+        }
+    }
+
+    private fun showToast(displayText: String) {
+        val toastLen = Toast.LENGTH_SHORT
+        val finishedToast = Toast.makeText(applicationContext, displayText, toastLen)
+        finishedToast.show()
+    }
+
+    fun toggleWaitNotifier(shown: Boolean, displayText: String) {
         val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
         if (shown) {
             waitNotifier.visibility = View.VISIBLE
+            val waitText = findViewById<TextView>(R.id.waitText)
+            waitText.text = displayText
         } else {
             waitNotifier.visibility = View.INVISIBLE
         }
@@ -121,7 +132,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             object : Style.OnStyleLoaded {
                 override fun onStyleLoaded(@NonNull style: Style) {
                     map_style = style
-                    stateLabelSymbolLayer = style.getLayer("state-label");
+                    stateLabelSymbolLayer = style.getLayer("state-label")
 
                     val symbolManager = SymbolManager(mapView!!, mapboxMap, style)
                     symbolManager.setIconAllowOverlap(true)
