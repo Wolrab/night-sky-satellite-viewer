@@ -6,7 +6,6 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
-import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -15,7 +14,6 @@ import android.widget.Toast
 import androidx.annotation.NonNull
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.mapboxsdk.Mapbox
-import com.mapbox.mapboxsdk.geometry.LatLng
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
@@ -25,11 +23,8 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
 
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 const val tleFileName = "gp.txt"
@@ -41,8 +36,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     // MapBox related attributes
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
-    private lateinit var map_style: Style
-    private var allSats = arrayListOf<DisplaySatellite>()
+    private lateinit var mapStyle: Style
+    private var displayedSats = arrayListOf<DisplaySatellite>()
     private var labelsize: Float = 15.0F
     private var stateLabelSymbolLayer: Layer? = null
 
@@ -51,9 +46,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     val ICON_ID = "SAT"
 
     // Satellite data pipeline
-    private val conversionPipe = Channel<DisplaySatellite>()
-    private var conversionJob: Deferred<Any>? = null
-    private var consumerJob: Deferred<Any>? = null
+    private var conversionScopeOld: CoroutineScope? = null
     private lateinit var tleConversion: TLEConversion
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,14 +65,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         satelliteSearch.addTextChangedListener(SatelliteFilter)
         SatelliteFilter.addSatelliteUpdateListener(this)
 
-        tleConversion = TLEConversion(this, tleFileName, tleUrlText)
+        tleConversion = TLEConversion(this.filesDir, tleFileName, tleUrlText)
 
         SatelliteManager.onDbUpdateComplete = {
             runOnUiThread(kotlinx.coroutines.Runnable() {
                 toggleWaitNotifier(false, "")
                 showToast("Done updating database!")
             });
-            configureSatellitePositions()
+            requestSatelliteUpdate()
         }
 
         SatelliteManager.initialize(applicationContext, this)
@@ -92,29 +85,40 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         val refreshButton: FloatingActionButton = findViewById(R.id.reload)
         refreshButton.setOnClickListener {
             if (SatelliteManager.initialized && !SatelliteManager.waiting) {
-                configureSatellitePositions()
+                requestSatelliteUpdate()
                 mapView!!.refreshDrawableState()
             }
         }
     }
 
-    private fun configureSatellitePositions() {
-        toggleWaitNotifier(true, "Updating satellite positions...")
-        conversionJob = tleConversion.initConversionPipelineAsync(conversionPipe)
+    override fun requestSatelliteUpdate() {
+        conversionScopeOld?.cancel()
 
-        consumerJob = SatelliteManager.conversionScope.async {
-            //Log.d("BIGDUMB", "GETTING FROM PIPE NOM NOM")
-            for (sat in conversionPipe) {
-                //Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
-                allSats.add(sat)
+        val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
+        conversionScopeOld = conversionScope
+        val conversionPipe = Channel<DisplaySatellite>()
+
+        toggleWaitNotifier(true, "Updating satellite positions...")
+
+        conversionScope.launch {
+            tleConversion.initConversionPipelineAsync(conversionPipe, conversionScope)
+        }
+
+        conversionScope.launch {
+            val displayedSatsPipe = conversionPipe.iterator()
+            val displayedSatsBuffer = arrayListOf<DisplaySatellite>()
+            while (isActive && displayedSatsPipe.hasNext()) {
+                displayedSatsBuffer.add(displayedSatsPipe.next())
             }
-            //Log.d("BIGDUMB", "DONE GETTING FROM PIPE")
-            runOnUiThread(kotlinx.coroutines.Runnable() {
-                updateMap()
-                mapView!!.refreshDrawableState()
-                showToast("Done updating positions!")
-                toggleWaitNotifier(false, "")
-            })
+            withContext(NonCancellable) {
+                displayedSats = displayedSatsBuffer // TODO: Feels gross (but most efficient?)
+                runOnUiThread(kotlinx.coroutines.Runnable() {
+                    updateMap()
+                    mapView!!.refreshDrawableState()
+                    showToast("Done updating positions!")
+                    toggleWaitNotifier(false, "")
+                })
+            }
         }
     }
 
@@ -143,7 +147,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                         this.getResources(), R.drawable.sat)),
                 object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(@NonNull style: Style) {
-                        map_style = style
+                        mapStyle = style
                         stateLabelSymbolLayer = style.getLayer("state-label")
 
                         val symbolManager = SymbolManager(mapView!!, map, style)
@@ -151,8 +155,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                         symbolManager.setTextAllowOverlap(funnyDeathBlobToggle)
 
                         var i = 0
-                        while (i < allSats.size) {
-                            val item = allSats[i]
+                        while (i < displayedSats.size) {
+                            val item = displayedSats[i]
                             var id = item.id
                             var loc = item.loc
                             var name = item.name
@@ -223,15 +227,5 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     inline fun Context.toast(message: () -> String) {
         Toast.makeText(this, message(), Toast.LENGTH_LONG).show()
-    }
-
-    override fun requestSatelliteUpdate() {
-        Log.d("DEBUG2", "UPDATE REQUEST")
-        conversionJob?.cancel()
-        consumerJob?.cancel()
-
-        allSats.removeAll(allSats)
-        configureSatellitePositions()
-        mapView!!.refreshDrawableState()
     }
 }

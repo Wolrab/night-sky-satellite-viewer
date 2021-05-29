@@ -7,7 +7,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
-import android.util.Log
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -46,7 +45,7 @@ object SatelliteManager {
     var onDbUpdateComplete: (()->Unit)? = null
     var onDbUpdateStart: (()->Unit)? = null
 
-    val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
+    private val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context, activity: MainActivity) {
         createOrFindDb(context)
@@ -61,7 +60,7 @@ object SatelliteManager {
     }
 
     fun updateAllSatellites(){
-        val updateJob = conversionScope.launch {
+        val updateJob = dbScope.launch {
             onDbUpdateStart?.invoke()
             waiting = true
             //Log.d("DATABASE_DEBUG", "Starting database update")
@@ -85,7 +84,7 @@ object SatelliteManager {
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {
-            val updateJob = conversionScope.launch {
+            val updateJob = dbScope.launch {
             waiting = true
             onDbUpdateStart?.invoke()
             //("DATABASE_DEBUG", "Starting database creation")
