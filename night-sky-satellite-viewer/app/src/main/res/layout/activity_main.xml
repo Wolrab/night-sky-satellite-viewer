@@ -12,7 +12,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:layout_editor_absoluteX="60dp"
-        tools:layout_editor_absoluteY="-42dp" />
+        tools:layout_editor_absoluteY="-42dp" >
+
+    </com.mapbox.mapboxsdk.maps.MapView>
 
     <FrameLayout
         android:id="@+id/frameLayout"
@@ -34,6 +36,26 @@
             android:scaleX="0.7"
             android:scaleY="0.7"
             android:src="@drawable/refresh" />
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:layout_marginTop="30dp"
+        android:layout_marginEnd="30dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <EditText
+            android:id="@+id/editTextSearch"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:ems="10"
+            android:inputType="textFilter"
+            android:text="" />
 
     </FrameLayout>
 

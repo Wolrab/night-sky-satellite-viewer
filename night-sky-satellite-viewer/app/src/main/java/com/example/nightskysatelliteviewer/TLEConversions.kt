@@ -1,6 +1,7 @@
 import android.content.Context
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
+import com.example.nightskysatelliteviewer.SatelliteFilter
 import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -53,16 +54,15 @@ class TLEConversion {
             //Log.d("CONVERSION-SEND", "Finished reading from URL")
 
             //Log.d("CONVERSION-SEND", "There are this many: ${SatelliteManager.numSatellites}")
-            for (i in 1 until SatelliteManager.numSatellites+1) {
-                val sat = SatelliteManager.getSatelliteByNumericId(i)
+            for (sat in SatelliteFilter) {
                 val lat = getLatitude(sat.name)
                 val long = getLongitude(sat.name)
                 val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
                 outPipe.send(satOut)
-                //Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
+                Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
             }
             outPipe.close()
-            //Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
+            Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
         }
     }
 

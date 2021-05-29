@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.graphics.PointF
 import android.util.Log
 import android.view.View
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -24,15 +25,20 @@ import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
+const val tleFileName = "gp.txt"
 
 const val funnyDeathBlobToggle = false
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateListener {
 
+    // MapBox related attributes
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
     private lateinit var map_style: Style
@@ -40,11 +46,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private var labelsize: Float = 15.0F
     private var stateLabelSymbolLayer: Layer? = null
 
-    val conversionPipe = Channel<DisplaySatellite>()
-
     val LAYER_ID = "MAIN"
     val SOURCE_ID = "SAT_DB"
     val ICON_ID = "SAT"
+
+    // Satellite data pipeline
+    private val conversionPipe = Channel<DisplaySatellite>()
+    private var conversionJob: Deferred<Any>? = null
+    private var consumerJob: Deferred<Any>? = null
+    private lateinit var tleConversion: TLEConversion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,15 +68,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         mapView?.getMapAsync(this)
 
-        val tleFileName = "gp.txt"
-        val tleConversion = TLEConversion(this, tleFileName, tleUrlText)
+        val satelliteSearch = findViewById<EditText>(R.id.editTextSearch)
+        satelliteSearch.addTextChangedListener(SatelliteFilter)
+        SatelliteFilter.addSatelliteUpdateListener(this)
+
+        tleConversion = TLEConversion(this, tleFileName, tleUrlText)
 
         SatelliteManager.onDbUpdateComplete = {
             runOnUiThread(kotlinx.coroutines.Runnable() {
                 toggleWaitNotifier(false, "")
                 showToast("Done updating database!")
             });
-            configureSatellitePositions(tleConversion)
+            configureSatellitePositions()
         }
 
         SatelliteManager.initialize(applicationContext, this)
@@ -76,23 +89,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             })
         }
 
-        //TODO: Once the real satellites are working in loop above, get rid of these fake ones
-        allSats.add(DisplaySatellite("Bellingham", "bham_id", LatLng(48.747789, -122.479255)))
-        allSats.add(DisplaySatellite("Japan", "jpn_id", LatLng(35.478780, 137.472501)))
-
         val refreshButton: FloatingActionButton = findViewById(R.id.reload)
         refreshButton.setOnClickListener {
             if (SatelliteManager.initialized && !SatelliteManager.waiting) {
-                configureSatellitePositions(tleConversion)
+                configureSatellitePositions()
                 mapView!!.refreshDrawableState()
             }
         }
     }
 
-    private fun configureSatellitePositions(tleConversion: TLEConversion) {
+    private fun configureSatellitePositions() {
         toggleWaitNotifier(true, "Updating satellite positions...")
-        val conversionJob = tleConversion.initConversionPipelineAsync(conversionPipe)
-        SatelliteManager.conversionScope.launch {
+        conversionJob = tleConversion.initConversionPipelineAsync(conversionPipe)
+
+        consumerJob = SatelliteManager.conversionScope.async {
             //Log.d("BIGDUMB", "GETTING FROM PIPE NOM NOM")
             for (sat in conversionPipe) {
                 //Log.d("BIGDUMB", "HERE HE IS, ${sat.name}")
@@ -161,7 +171,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                                 true
 
                             }
-                            i += 20
+                            i += 1
                         }
                         stateLabelSymbolLayer!!.setProperties(
                                 textIgnorePlacement(true),
@@ -213,5 +223,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     inline fun Context.toast(message: () -> String) {
         Toast.makeText(this, message(), Toast.LENGTH_LONG).show()
+    }
+
+    override fun requestSatelliteUpdate() {
+        Log.d("DEBUG2", "UPDATE REQUEST")
+        conversionJob?.cancel()
+        consumerJob?.cancel()
+
+        allSats.removeAll(allSats)
+        configureSatellitePositions()
+        mapView!!.refreshDrawableState()
     }
 }
