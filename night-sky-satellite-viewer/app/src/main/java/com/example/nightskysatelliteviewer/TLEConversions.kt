@@ -58,10 +58,10 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
             val long = getLongitude(sat.name)
             val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
             outPipe.send(satOut)
-            Log.d("CONVERSION-SEND", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
+            Log.d("DEBUG", "${satOut.name}, ${satOut.id}, ${satOut.loc}")
         }
         outPipe.close()
-        Log.d("CONVERSION-SEND", "OUTPIPE CLOSED")
+        Log.d("DEBUG", "OUTPIPE CLOSED")
     }
 
     private fun createTemporaryFileFromUrl(fileDir: File, tleName: String, tleText: String): File {

@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.PointF
+import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -111,7 +112,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 displayedSatsBuffer.add(displayedSatsPipe.next())
             }
             withContext(NonCancellable) {
-                displayedSats = displayedSatsBuffer // TODO: Feels gross (but most efficient?)
+                Log.d("DEBUG", "DisplayedSatsBuffer: ${displayedSatsBuffer.size}")
+                Log.d("DEBUG", "DisplayedSats Before: ${displayedSats.size}")
+                displayedSats = displayedSatsBuffer
+                Log.d("DEBUG", "DisplayedSats After: ${displayedSats.size}")
+
                 runOnUiThread(kotlinx.coroutines.Runnable() {
                     updateMap()
                     mapView!!.refreshDrawableState()
@@ -143,46 +148,40 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     private fun updateMap() {
         map.setStyle(Style.Builder().fromUri(Style.MAPBOX_STREETS)
-                .withImage(ICON_ID, BitmapFactory.decodeResource(
-                        this.getResources(), R.drawable.sat)),
-                object : Style.OnStyleLoaded {
-                    override fun onStyleLoaded(@NonNull style: Style) {
-                        mapStyle = style
-                        stateLabelSymbolLayer = style.getLayer("state-label")
+                .withImage(ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat)))
+        { style ->
+            mapStyle = style
+            stateLabelSymbolLayer = style.getLayer("state-label")
 
-                        val symbolManager = SymbolManager(mapView!!, map, style)
-                        symbolManager.setIconAllowOverlap(funnyDeathBlobToggle)
-                        symbolManager.setTextAllowOverlap(funnyDeathBlobToggle)
+            val symbolManager = SymbolManager(mapView!!, map, style)
+            symbolManager.iconAllowOverlap = funnyDeathBlobToggle
+            symbolManager.textAllowOverlap = funnyDeathBlobToggle
 
-                        var i = 0
-                        while (i < displayedSats.size) {
-                            val item = displayedSats[i]
-                            var id = item.id
-                            var loc = item.loc
-                            var name = item.name
+            for (item in displayedSats) {
+                var id = item.id
+                var loc = item.loc
+                var name = item.name
 
-                            val symbol = symbolManager.create(SymbolOptions()
-                                    .withLatLng(loc)
-                                    .withIconImage(ICON_ID)
-                                    .withIconSize(.50f))
-                            symbol.textField = name
-                            symbol.textSize = labelsize
-                            symbol.textOffset = PointF(2f, 2f)
-                            symbolManager.update(symbol)
+                val symbol = symbolManager.create(SymbolOptions()
+                        .withLatLng(loc)
+                        .withIconImage(ICON_ID)
+                        .withIconSize(.50f))
+                symbol.textField = name
+                symbol.textSize = labelsize
+                symbol.textOffset = PointF(2f, 2f)
+                symbolManager.update(symbol)
 
-                            symbolManager.addClickListener { symbol ->
-                                toast { "You clicked the " + symbol.textField + " satellite!" }
-                                true
+                symbolManager.addClickListener { symbol ->
+                    toast { "You clicked the " + symbol.textField + " satellite!" }
+                    true
 
-                            }
-                            i += 1
-                        }
-                        stateLabelSymbolLayer!!.setProperties(
-                                textIgnorePlacement(true),
-                                textAllowOverlap(true),
-                                textAnchor(Property.TEXT_ANCHOR_BOTTOM))
-                    }
-                })
+                }
+            }
+            stateLabelSymbolLayer!!.setProperties(
+                    textIgnorePlacement(true),
+                    textAllowOverlap(true),
+                    textAnchor(Property.TEXT_ANCHOR_BOTTOM))
+        }
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {

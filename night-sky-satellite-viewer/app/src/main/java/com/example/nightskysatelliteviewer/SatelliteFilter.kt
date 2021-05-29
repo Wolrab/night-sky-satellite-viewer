@@ -37,7 +37,6 @@ object SatelliteFilter: TextWatcher, Iterable<Satellite> {
 
             override fun hasNext(): Boolean {
                 var next = false
-                Log.d("DEBUG", "called hasNext")
 
                 if (id <= SatelliteManager.numSatellites) {
                     var sat = SatelliteManager.getSatelliteByNumericId(id)
@@ -59,15 +58,12 @@ object SatelliteFilter: TextWatcher, Iterable<Satellite> {
             }
 
             override fun next(): Satellite {
-                Log.d("DEBUG", "called next")
                 return nextSat!!
             }
 
             private fun matched(name: String): Boolean {
                 var match = false
                 val common = name.capitalize().commonPrefixWith(filterPattern)
-
-                Log.d("DEBUG", "$name and $filterPattern have $common in common")
 
                 if (common.contentEquals(filterPattern)) match = true
 
