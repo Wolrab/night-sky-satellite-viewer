@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         finishedToast.show()
     }
 
-    fun toggleWaitNotifier(shown: Boolean, displayText: String) {
+    private fun toggleWaitNotifier(shown: Boolean, displayText: String) {
         runOnUiThread(kotlinx.coroutines.Runnable() {
             val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
             if (shown) {
@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     }
 
     private fun updateMap() {
-        map.setStyle(Style.Builder().fromUri(Style.MAPBOX_STREETS)
+        map.setStyle(Style.Builder().fromUri(Style.DARK)
                 .withImage(ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
                 .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats)) )
                 .withLayer(SymbolLayer(LAYER_ID, SOURCE_ID)
@@ -166,8 +166,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                                 textField(Expression.get("name")),
                                 textRadialOffset(2.0F),
                                 textAnchor(Property.TEXT_ANCHOR_BOTTOM),
-                                textAllowOverlap(true),
-                                textSize(labelsize)
+                                textAllowOverlap(false),
+                                textSize(labelsize),
+                                textColor(resources.getColor(R.color.white))
                         )))
         { style ->
             // Nothing for now lmao

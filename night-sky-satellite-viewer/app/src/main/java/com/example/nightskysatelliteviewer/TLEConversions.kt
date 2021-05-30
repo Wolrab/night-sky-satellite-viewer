@@ -1,9 +1,11 @@
 import android.content.Context
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
+import com.example.nightskysatelliteviewer.MainActivity
 import com.example.nightskysatelliteviewer.SatelliteFilter
 import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.sdp4.SDP4
+import com.example.nightskysatelliteviewer.sdp4.SDP4NoSatException
 import com.mapbox.mapboxsdk.geometry.LatLng
 import kotlinx.coroutines.*
 import kotlinx.coroutines.NonCancellable.isActive
@@ -53,11 +55,15 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         val satellites = SatelliteFilter.iterator()
 
         while (scope.isActive && satellites.hasNext()) {
-            val sat = satellites.next()
-            val lat = getLatitude(sat.name)
-            val long = getLongitude(sat.name)
-            val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
-            outPipe.send(satOut)
+            try {
+                val sat = satellites.next()
+                val lat = getLatitude(sat.name)
+                val long = getLongitude(sat.name)
+                val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
+                outPipe.send(satOut)
+            } catch (e: SDP4NoSatException){
+                Log.d("CONVERSION","Local database out of date")
+            }
         }
         outPipe.close()
     }
@@ -111,7 +117,7 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         sdp4.GetPosVel(getJulianDate())
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
-        var factor: Double = 1/abs(sdp4.itsR.min()!!)
+        var factor: Double = 1 / abs(sdp4.itsR.min()!!)
 
         // Increase minimum?
         factor *= 1000000
