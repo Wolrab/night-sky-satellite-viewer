@@ -14,6 +14,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.NonNull
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.mapbox.geojson.Feature
+import com.mapbox.geojson.FeatureCollection
+import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
@@ -21,9 +24,12 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager
 import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
+import com.mapbox.mapboxsdk.style.expressions.Expression
 import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
+import com.mapbox.mapboxsdk.style.layers.SymbolLayer
+import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 
@@ -38,13 +44,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
     private lateinit var mapStyle: Style
-    private var displayedSats = arrayListOf<DisplaySatellite>()
+    private var displayedSats = arrayListOf<Feature>()
     private var labelsize: Float = 15.0F
-    private var stateLabelSymbolLayer: Layer? = null
 
-    val LAYER_ID = "MAIN"
-    val SOURCE_ID = "SAT_DB"
-    val ICON_ID = "SAT"
+    val LAYER_ID = "SAT_LAYER"
+    val SOURCE_ID = "SAT_SOURCE"
+    val ICON_ID = "SAT_ICON"
 
     // Satellite data pipeline
     private var conversionScopeOld: CoroutineScope? = null
@@ -107,9 +112,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
         conversionScope.launch {
             val displayedSatsPipe = conversionPipe.iterator()
-            val displayedSatsBuffer = arrayListOf<DisplaySatellite>()
+            val displayedSatsBuffer = arrayListOf<Feature>()
             while (isActive && displayedSatsPipe.hasNext()) {
-                displayedSatsBuffer.add(displayedSatsPipe.next())
+                val sat = displayedSatsPipe.next()
+
+                val feature = Feature.fromGeometry(Point.fromLngLat(sat.loc.longitude, sat.loc.latitude))
+                feature.addStringProperty("name", sat.name)
+
+                displayedSatsBuffer.add(feature)
             }
             withContext(NonCancellable) {
                 Log.d("DEBUG", "DisplayedSatsBuffer: ${displayedSatsBuffer.size}")
@@ -148,39 +158,59 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     private fun updateMap() {
         map.setStyle(Style.Builder().fromUri(Style.MAPBOX_STREETS)
-                .withImage(ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat)))
+                .withImage(ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
+                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats)) )
+                .withLayer(SymbolLayer(LAYER_ID, SOURCE_ID)
+                        .withProperties(
+                                iconImage(ICON_ID),
+                                iconSize(0.5F),
+                                iconAllowOverlap(false),
+                                iconAllowOverlap(false),
+                                textField(Expression.get("name")),
+                                textRadialOffset(2.0F),
+                                textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                                textAllowOverlap(true),
+                                textSize(labelsize)
+                        )))
         { style ->
-            mapStyle = style
-            stateLabelSymbolLayer = style.getLayer("state-label")
+            val layer = style.getLayer(LAYER_ID)
 
-            val symbolManager = SymbolManager(mapView!!, map, style)
-            symbolManager.iconAllowOverlap = funnyDeathBlobToggle
-            symbolManager.textAllowOverlap = funnyDeathBlobToggle
-
-            for (item in displayedSats) {
-                var id = item.id
-                var loc = item.loc
-                var name = item.name
-
-                val symbol = symbolManager.create(SymbolOptions()
-                        .withLatLng(loc)
-                        .withIconImage(ICON_ID)
-                        .withIconSize(.50f))
-                symbol.textField = name
-                symbol.textSize = labelsize
-                symbol.textOffset = PointF(2f, 2f)
-                symbolManager.update(symbol)
-
-                symbolManager.addClickListener { symbol ->
-                    toast { "You clicked the " + symbol.textField + " satellite!" }
-                    true
-
-                }
-            }
-            stateLabelSymbolLayer!!.setProperties(
-                    textIgnorePlacement(true),
-                    textAllowOverlap(true),
-                    textAnchor(Property.TEXT_ANCHOR_BOTTOM))
+//            mapStyle = style
+//            val symbolLayer = SymbolLayer("unclustered-points", EARTHQUAKE_SOURCE_ID).withProperties(
+//                    iconImage(ICON_ID),
+//                    iconSize(0.5f)
+//            )
+//            style.removeLayer()
+//
+//            mapStyle.addSource()
+//            val symbolManager = SymbolManager(mapView!!, map, style)
+//            symbolManager.iconAllowOverlap = funnyDeathBlobToggle
+//            symbolManager.textAllowOverlap = funnyDeathBlobToggle
+//
+//            for (item in displayedSats) {
+//                var id = item.id
+//                var loc = item.loc
+//                var name = item.name
+//
+//                val symbol = symbolManager.create(SymbolOptions()
+//                        .withLatLng(loc)
+//                        .withIconImage(ICON_ID)
+//                        .withIconSize(.50f))
+//                symbol.textField = name
+//                symbol.textSize = labelsize
+//                symbol.textOffset = PointF(2f, 2f)
+//                symbolManager.update(symbol)
+//
+//                symbolManager.addClickListener { symbol ->
+//                    toast { "You clicked the " + symbol.textField + " satellite!" }
+//                    true
+//
+//                }
+//            }
+//            stateLabelSymbolLayer!!.setProperties(
+//                    textIgnorePlacement(true),
+//                    textAllowOverlap(true),
+//                    textAnchor(Property.TEXT_ANCHOR_BOTTOM))
         }
     }
 
