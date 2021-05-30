@@ -122,10 +122,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 displayedSatsBuffer.add(feature)
             }
             withContext(NonCancellable) {
-                Log.d("DEBUG", "DisplayedSatsBuffer: ${displayedSatsBuffer.size}")
-                Log.d("DEBUG", "DisplayedSats Before: ${displayedSats.size}")
                 displayedSats = displayedSatsBuffer
-                Log.d("DEBUG", "DisplayedSats After: ${displayedSats.size}")
 
                 runOnUiThread(kotlinx.coroutines.Runnable() {
                     updateMap()
@@ -173,44 +170,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                                 textSize(labelsize)
                         )))
         { style ->
-            val layer = style.getLayer(LAYER_ID)
-
-//            mapStyle = style
-//            val symbolLayer = SymbolLayer("unclustered-points", EARTHQUAKE_SOURCE_ID).withProperties(
-//                    iconImage(ICON_ID),
-//                    iconSize(0.5f)
-//            )
-//            style.removeLayer()
-//
-//            mapStyle.addSource()
-//            val symbolManager = SymbolManager(mapView!!, map, style)
-//            symbolManager.iconAllowOverlap = funnyDeathBlobToggle
-//            symbolManager.textAllowOverlap = funnyDeathBlobToggle
-//
-//            for (item in displayedSats) {
-//                var id = item.id
-//                var loc = item.loc
-//                var name = item.name
-//
-//                val symbol = symbolManager.create(SymbolOptions()
-//                        .withLatLng(loc)
-//                        .withIconImage(ICON_ID)
-//                        .withIconSize(.50f))
-//                symbol.textField = name
-//                symbol.textSize = labelsize
-//                symbol.textOffset = PointF(2f, 2f)
-//                symbolManager.update(symbol)
-//
-//                symbolManager.addClickListener { symbol ->
-//                    toast { "You clicked the " + symbol.textField + " satellite!" }
-//                    true
-//
-//                }
-//            }
-//            stateLabelSymbolLayer!!.setProperties(
-//                    textIgnorePlacement(true),
-//                    textAllowOverlap(true),
-//                    textAnchor(Property.TEXT_ANCHOR_BOTTOM))
+            // Nothing for now lmao
         }
     }
 
