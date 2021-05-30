@@ -53,16 +53,17 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         }
 
         val satellites = SatelliteFilter.iterator()
+        val epoch = getJulianDate()
 
         while (scope.isActive && satellites.hasNext()) {
             try {
                 val sat = satellites.next()
-                val lat = getLatitude(sat.name)
-                val long = getLongitude(sat.name)
-                val satOut = DisplaySatellite(sat.name, sat.id, LatLng(lat, long))
+                val latLng = getLatLng(sat.name, epoch)
+                val satOut = DisplaySatellite(sat.name, sat.id, latLng)
                 outPipe.send(satOut)
             } catch (e: SDP4NoSatException){
                 Log.d("CONVERSION","Local database out of date")
+                // TODO: Update database?
             }
         }
         outPipe.close()
@@ -78,17 +79,21 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         return file
     }
 
-    private fun getLongitude(satellite: String): Double {
-        val pos = getSatellitePosition(satellite)
+    private fun getLatLng(satellite: String, epoch: Double): LatLng {
+        val pos = getSatellitePosition(satellite, epoch)
+        val lat = calculateLatitude(pos)
+        val lng = calculateLongitude(pos)
+        return LatLng(lat, lng)
+    }
+
+    private fun calculateLongitude(pos: Array<Double>): Double {
         var longitude = atan2(pos[1], pos[0])
 
         longitude = Math.toDegrees(longitude)
         return longitude
     }
 
-    private fun getLatitude(satellite: String): Double {
-        val pos = getSatellitePosition(satellite)
-
+    private fun calculateLatitude(pos: Array<Double>): Double {
         val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
         val er2 = (a.pow(2) - b.pow(2))/b.pow(2)
         val F = 54 * b.pow(2) * pos[2].pow(2)
@@ -111,10 +116,9 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         return latitude
     }
 
-    // TODO: Cache results for consistent results and avoiding calculating SDP4 twice
-    private fun getSatellitePosition(satellite: String): Array<Double> {
+    private fun getSatellitePosition(satellite: String, epoch: Double): Array<Double> {
         sdp4.NoradByName(path, satellite)
-        sdp4.GetPosVel(getJulianDate())
+        sdp4.GetPosVel(epoch)
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
         var factor: Double = 1 / abs(sdp4.itsR.min()!!)
@@ -133,7 +137,6 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         return pos
     }
 
-    // TODO: Make consistent between invocations?
     private fun getJulianDate(): Double {
         /* Get the milliseconds since UT 1970-01-01T00:00:00 from system clock.
          * Convert to days then to JD. */
