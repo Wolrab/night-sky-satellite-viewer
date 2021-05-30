@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.PointF
 import android.util.Log
 import android.view.View
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     val UNCLUSTERED_ICON_ID = "SAT_ICON"
     val CLUSTERED_ICON_ID = "CLUSTER_ICON"
     val CLUSTER_LAYERS = arrayOf("CLUSTER_1" to 150, "CLUSTER_2" to 20, "CLUSTER_3" to 0)
+    val CLUSTER_COUNT_LAYER = "COUNT"
     val CLUSTER_POINT_COUNT = "point_count"
     val SOURCE_ID = "SAT_SOURCE"
 
@@ -181,7 +183,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                                 textAnchor(Property.TEXT_ANCHOR_BOTTOM),
                                 textAllowOverlap(false),
                                 textSize(labelsize),
-                                textColor(resources.getColor(R.color.white))
+                                textColor(Color.WHITE)
                         )))
         { style ->
             for (i in CLUSTER_LAYERS.indices) {
@@ -211,6 +213,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
                 style.addLayer(layer)
             }
+            style.addLayer(SymbolLayer(CLUSTER_COUNT_LAYER, SOURCE_ID).withProperties(
+                    textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
+                    textSize(12.0F),
+                    textColor(Color.WHITE),
+                    textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
+                    textOffset(arrayOf(3f, -2f)),
+                    textIgnorePlacement(true),
+                    textAllowOverlap(true)
+            ))
         }
     }
 
