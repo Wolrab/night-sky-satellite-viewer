@@ -29,6 +29,7 @@ import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer
+import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -47,9 +48,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     private var displayedSats = arrayListOf<Feature>()
     private var labelsize: Float = 15.0F
 
-    val LAYER_ID = "SAT_LAYER"
+    val UNCLUSTERED_LAYER_ID = "SAT_LAYER"
+    val UNCLUSTERED_ICON_ID = "SAT_ICON"
+    val CLUSTERED_ICON_ID = "CLUSTER_ICON"
+    val CLUSTER_LAYERS = arrayOf("CLUSTER_1" to 150, "CLUSTER_2" to 20, "CLUSTER_3" to 0)
+    val CLUSTER_POINT_COUNT = "point_count"
     val SOURCE_ID = "SAT_SOURCE"
-    val ICON_ID = "SAT_ICON"
 
     // Satellite data pipeline
     private var conversionScopeOld: CoroutineScope? = null
@@ -97,6 +101,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         }
     }
 
+    /**
+     * Launch both the producer and consumer of satellite data with respect
+     *   to current filter settings.
+     */
     override fun requestSatelliteUpdate() {
         conversionScopeOld?.cancel()
 
@@ -154,12 +162,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     }
 
     private fun updateMap() {
+
         map.setStyle(Style.Builder().fromUri(Style.DARK)
-                .withImage(ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
-                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats)) )
-                .withLayer(SymbolLayer(LAYER_ID, SOURCE_ID)
+                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
+                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster))
+                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats), GeoJsonOptions()
+                        .withCluster(true)
+                        .withClusterMaxZoom(14)
+                        .withClusterRadius(50)))
+                .withLayer(SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
                         .withProperties(
-                                iconImage(ICON_ID),
+                                iconImage(UNCLUSTERED_ICON_ID),
                                 iconSize(0.5F),
                                 iconAllowOverlap(false),
                                 iconAllowOverlap(false),
@@ -171,7 +184,33 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                                 textColor(resources.getColor(R.color.white))
                         )))
         { style ->
-            // Nothing for now lmao
+            for (i in CLUSTER_LAYERS.indices) {
+                val id = CLUSTER_LAYERS[i].first
+                val clusterNum = CLUSTER_LAYERS[i].second
+
+                val layer = SymbolLayer(id, SOURCE_ID)
+                        .withProperties(iconImage(CLUSTERED_ICON_ID))
+
+                val pointCount = Expression.toNumber(Expression.get(CLUSTER_POINT_COUNT))
+                if (i == 0) {
+                    layer.setFilter(
+                            Expression.all(
+                            Expression.has(CLUSTER_POINT_COUNT),
+                            Expression.gte(pointCount, Expression.literal(clusterNum))
+                    ))
+                }
+                else {
+                    val prevClusterNum = CLUSTER_LAYERS[i-1].second
+                    layer.setFilter(
+                            Expression.all(
+                            Expression.has(CLUSTER_POINT_COUNT),
+                            Expression.gte(pointCount, Expression.literal(clusterNum)),
+                            Expression.lt(pointCount, Expression.literal(prevClusterNum))
+                    ))
+                }
+
+                style.addLayer(layer)
+            }
         }
     }
 
