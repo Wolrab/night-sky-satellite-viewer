@@ -165,27 +165,38 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     private fun updateMap() {
 
+        val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
+                .withProperties(
+                        iconImage(UNCLUSTERED_ICON_ID),
+                        iconSize(0.5F),
+                        iconAllowOverlap(false),
+                        iconAllowOverlap(false),
+                        textField(Expression.get("name")),
+                        textRadialOffset(2.0F),
+                        textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                        textAllowOverlap(false),
+                        textSize(labelsize),
+                        textColor(Color.WHITE)
+                )
+        val clusteredLayer = SymbolLayer(CLUSTER_COUNT_LAYER, SOURCE_ID)
+                .withProperties(
+                    textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
+                    textSize(12.0F),
+                    textColor(Color.WHITE),
+                    textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
+                    textOffset(arrayOf(3f, -2f)),
+                    textIgnorePlacement(true),
+                    textAllowOverlap(true)
+                )
+
         map.setStyle(Style.Builder().fromUri(Style.DARK)
-                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
-                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster))
+                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
+                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
                 .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats), GeoJsonOptions()
                         .withCluster(true)
                         .withClusterMaxZoom(14)
                         .withClusterRadius(50)))
-                .withLayer(SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
-                        .withProperties(
-                                iconImage(UNCLUSTERED_ICON_ID),
-                                iconSize(0.5F),
-                                iconAllowOverlap(false),
-                                iconAllowOverlap(false),
-                                iconColor(Color.LTGRAY),
-                                textField(Expression.get("name")),
-                                textRadialOffset(2.0F),
-                                textAnchor(Property.TEXT_ANCHOR_BOTTOM),
-                                textAllowOverlap(false),
-                                textSize(labelsize),
-                                textColor(Color.WHITE)
-                        )))
+                .withLayer(unclusteredLayer))
         { style ->
             for (i in CLUSTER_LAYERS.indices) {
                 val id = CLUSTER_LAYERS[i].first
@@ -214,16 +225,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
                 style.addLayer(layer)
             }
-            style.addLayer(SymbolLayer(CLUSTER_COUNT_LAYER, SOURCE_ID).withProperties(
-                    textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
-                    textSize(12.0F),
-                    textColor(Color.WHITE),
-                    iconColor(Color.LTGRAY),
-                    textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
-                    textOffset(arrayOf(3f, -2f)),
-                    textIgnorePlacement(true),
-                    textAllowOverlap(true)
-            ))
+            style.addLayer(clusteredLayer)
         }
     }
 
