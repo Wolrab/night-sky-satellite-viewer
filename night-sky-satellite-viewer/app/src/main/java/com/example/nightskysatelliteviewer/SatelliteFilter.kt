@@ -31,7 +31,7 @@ object SatelliteFilter: TextWatcher, Iterable<Satellite> {
 
     override fun iterator(): Iterator<Satellite> {
         return object: Iterator<Satellite> {
-            private val filterPattern = SatelliteFilter.filterPattern.capitalize()
+            private val filterPattern = SatelliteFilter.filterPattern.toUpperCase()
             private var id = 1
             private var nextSat: Satellite? = null
 
