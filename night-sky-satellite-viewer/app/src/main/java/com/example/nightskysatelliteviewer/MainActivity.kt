@@ -55,7 +55,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     val SOURCE_ID = "SAT_SOURCE"
 
     // Satellite data pipeline
-    private var conversionScopeOld: CoroutineScope? = null
+    private var conversionScopeSave: CoroutineScope? = null
+    private lateinit var updateScope: CoroutineScope
 
     private lateinit var tleConversion: TLEConversion
 
@@ -77,17 +78,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
         tleConversion = TLEConversion(this.filesDir, tleFileName, tleUrlText)
 
+        updateScope = CoroutineScope(Job() + Dispatchers.IO)
+        updateScope.launch {
+            while (true) {
+                delay(5000L)
+                if (conversionScopeSave != null)
+                    requestSatelliteUpdate()
+            }
+        }
+
         SatelliteManager.onDbUpdateComplete = {
-            runOnUiThread(kotlinx.coroutines.Runnable() {
+            runOnUiThread(Runnable() {
                 toggleWaitNotifier(false, "")
                 showToast("Done updating database!")
-            });
+            })
             requestSatelliteUpdate()
         }
 
         SatelliteManager.initialize(applicationContext, this)
         SatelliteManager.onDbUpdateStart = {
-            runOnUiThread(kotlinx.coroutines.Runnable() {
+            runOnUiThread(Runnable() {
                 toggleWaitNotifier(true, "Updating database...")
             })
         }
@@ -98,10 +108,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
      *   to current filter settings.
      */
     override fun requestSatelliteUpdate() {
-        conversionScopeOld?.cancel()
+        conversionScopeSave?.cancel()
 
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
-        conversionScopeOld = conversionScope
+        conversionScopeSave = conversionScope
         val conversionPipe = Channel<DisplaySatellite>()
 
         toggleWaitNotifier(true, "Updating satellite positions...")
