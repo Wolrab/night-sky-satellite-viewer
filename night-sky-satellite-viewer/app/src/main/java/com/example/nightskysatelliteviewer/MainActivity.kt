@@ -1,20 +1,19 @@
 package com.example.nightskysatelliteviewer
 
 import TLEConversion
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PointF
+import android.graphics.RectF
+import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.NonNull
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import androidx.appcompat.app.AppCompatActivity
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
@@ -23,10 +22,7 @@ import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.maps.Style
-import com.mapbox.mapboxsdk.plugins.annotation.SymbolManager
-import com.mapbox.mapboxsdk.plugins.annotation.SymbolOptions
 import com.mapbox.mapboxsdk.style.expressions.Expression
-import com.mapbox.mapboxsdk.style.layers.Layer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
 import com.mapbox.mapboxsdk.style.layers.SymbolLayer
@@ -53,6 +49,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     val CLUSTER_COUNT_LAYER = "COUNT"
     val CLUSTER_POINT_COUNT = "point_count"
     val SOURCE_ID = "SAT_SOURCE"
+
+    val SAT_NAME = "sat_name"
+    val SAT_ID = "sat_id"
 
     // Satellite data pipeline
     private var conversionScopeSave: CoroutineScope? = null
@@ -81,18 +80,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         updateScope = CoroutineScope(Job() + Dispatchers.IO)
         updateScope.launch {
             while (true) {
-                delay(5000L)
+                delay(15000L)
                 if (conversionScopeSave != null)
-                    requestSatelliteUpdate()
+                    requestSatelliteUpdate("")
             }
         }
 
         SatelliteManager.onDbUpdateComplete = {
             runOnUiThread(Runnable() {
                 toggleWaitNotifier(false, "")
-                showToast("Done updating database!")
             })
-            requestSatelliteUpdate()
+            requestSatelliteUpdate("Initializing Satellites...")
         }
 
         SatelliteManager.initialize(applicationContext, this)
@@ -107,14 +105,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
      * Launch both the producer and consumer of satellite data with respect
      *   to current filter settings.
      */
-    override fun requestSatelliteUpdate() {
+    override fun requestSatelliteUpdate(message: String) {
         conversionScopeSave?.cancel()
 
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
         conversionScopeSave = conversionScope
         val conversionPipe = Channel<DisplaySatellite>()
 
-        toggleWaitNotifier(true, "Updating satellite positions...")
+        toggleWaitNotifier(true, message)
 
         conversionScope.launch {
             tleConversion.initConversionPipelineAsync(conversionPipe, conversionScope)
@@ -127,7 +125,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 val sat = displayedSatsPipe.next()
 
                 val feature = Feature.fromGeometry(Point.fromLngLat(sat.loc.longitude, sat.loc.latitude))
-                feature.addStringProperty("name", sat.name)
+                feature.addStringProperty(SAT_NAME, sat.name)
+                feature.addStringProperty(SAT_ID, sat.id)
 
                 displayedSatsBuffer.add(feature)
             }
@@ -137,7 +136,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 runOnUiThread(kotlinx.coroutines.Runnable() {
                     updateMap()
                     mapView!!.refreshDrawableState()
-                    showToast("Done updating positions!")
                     toggleWaitNotifier(false, "")
                 })
             }
@@ -170,7 +168,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                         iconSize(0.5F),
                         iconAllowOverlap(false),
                         iconAllowOverlap(false),
-                        textField(Expression.get("name")),
+                        textField(Expression.get(SAT_NAME)),
                         textRadialOffset(2.0F),
                         textAnchor(Property.TEXT_ANCHOR_BOTTOM),
                         textAllowOverlap(false),
@@ -187,7 +185,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                     textIgnorePlacement(true),
                     textAllowOverlap(true)
                 )
-
         map.setStyle(Style.Builder().fromUri(Style.DARK)
                 .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
                 .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
@@ -225,6 +222,30 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 style.addLayer(layer)
             }
             style.addLayer(clusteredLayer)
+        }
+        map.addOnMapClickListener { point ->
+            val pixel: PointF = map.projection.toScreenLocation(point)
+
+            val rect = 20F
+            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)
+
+            for (feature in features) {
+                if (feature.properties() != null) {
+                    val name = feature.properties()!!.get(SAT_NAME)
+                    val id = feature.properties()!!.get(SAT_ID)
+                    if (name != null && id != null) {
+                        Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
+                    } else if (feature.properties()!!.get(CLUSTER_POINT_COUNT) != null) {
+                        Log.d("DEBUG", "Cluster with ${feature.properties()!!.get(CLUSTER_POINT_COUNT)} satellites found")
+                    } else {
+                        Log.d("DEBUG", "Non-satellite found")
+                    }
+                } else {
+                    Log.d("DEBUG", "Feature has no properties")
+                }
+            }
+
+            return@addOnMapClickListener true
         }
     }
 

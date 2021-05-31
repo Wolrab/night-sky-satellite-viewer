@@ -6,7 +6,7 @@ import android.util.Log
 import android.view.Display
 
 interface SatelliteUpdateListener {
-    fun requestSatelliteUpdate()
+    fun requestSatelliteUpdate(message: String)
 }
 
 object SatelliteFilter: TextWatcher, Iterable<Satellite> {
@@ -21,7 +21,7 @@ object SatelliteFilter: TextWatcher, Iterable<Satellite> {
     override fun afterTextChanged(s: Editable?) {
         filterPattern = s?.toString() ?: ""
         for (l in listeners) {
-            l.requestSatelliteUpdate()
+            l.requestSatelliteUpdate("")
         }
     }
 

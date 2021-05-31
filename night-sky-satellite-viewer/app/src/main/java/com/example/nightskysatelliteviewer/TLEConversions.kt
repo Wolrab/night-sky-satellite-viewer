@@ -74,7 +74,10 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         file.deleteOnExit()
 
         val url = URL(tleText)
-        file.writeText(url.readText())
+        // TODO: Logic in case of connection failure?
+        // - Alternative smaller API's we call?
+        val text = url.readText()
+        file.writeText(text)
 
         return file
     }
