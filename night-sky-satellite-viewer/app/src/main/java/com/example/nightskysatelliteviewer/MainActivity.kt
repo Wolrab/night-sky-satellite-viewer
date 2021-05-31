@@ -38,14 +38,11 @@ import kotlinx.coroutines.channels.Channel
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 const val tleFileName = "gp.txt"
 
-const val funnyDeathBlobToggle = false
-
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateListener {
-
+    // TODO: Use ViewModels for all these weird dangerous objects
     // MapBox related attributes
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
-    private lateinit var mapStyle: Style
     private var displayedSats = arrayListOf<Feature>()
     private var labelsize: Float = 15.0F
 
@@ -59,6 +56,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     // Satellite data pipeline
     private var conversionScopeOld: CoroutineScope? = null
+
     private lateinit var tleConversion: TLEConversion
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,14 +90,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
             runOnUiThread(kotlinx.coroutines.Runnable() {
                 toggleWaitNotifier(true, "Updating database...")
             })
-        }
-
-        val refreshButton: FloatingActionButton = findViewById(R.id.reload)
-        refreshButton.setOnClickListener {
-            if (SatelliteManager.initialized && !SatelliteManager.waiting) {
-                requestSatelliteUpdate()
-                mapView!!.refreshDrawableState()
-            }
         }
     }
 
@@ -164,7 +154,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
     }
 
     private fun updateMap() {
-
         map.setStyle(Style.Builder().fromUri(Style.DARK)
                 .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat))
                 .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster))
@@ -176,7 +165,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                         .withProperties(
                                 iconImage(UNCLUSTERED_ICON_ID),
                                 iconSize(0.5F),
-                                iconAllowOverlap(false),
                                 iconAllowOverlap(false),
                                 iconColor(Color.LTGRAY),
                                 textField(Expression.get("name")),
