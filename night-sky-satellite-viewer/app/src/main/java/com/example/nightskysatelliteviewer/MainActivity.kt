@@ -8,12 +8,15 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
+import android.view.MenuItem
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
@@ -74,6 +77,24 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         val satelliteSearch = findViewById<EditText>(R.id.editTextSearch)
         satelliteSearch.addTextChangedListener(SatelliteFilter)
         SatelliteFilter.addSatelliteUpdateListener(this)
+
+        val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
+        menu_button.setOnClickListener {
+            var popup = PopupMenu(this, menu_button)
+            popup.menuInflater.inflate(R.menu.popup, popup.menu)
+            popup.setOnMenuItemClickListener(PopupMenu.OnMenuItemClickListener { item: MenuItem? ->
+
+                when (item!!.itemId) {
+                    R.id.about -> {
+                        //Toast.makeText(this@MainActivity, item.title, Toast.LENGTH_SHORT).show()
+                        //TODO: Inflate textview with credits
+                        Log.d("DEBUG", "you clicked " + item.title)
+                    }
+                }
+                true
+            })
+            popup.show()
+        }
 
         tleConversion = TLEConversion(this.filesDir, tleFileName, tleUrlText)
 
@@ -163,60 +184,60 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
 
     private fun updateMap() {
         val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
-                .withProperties(
-                        iconImage(UNCLUSTERED_ICON_ID),
-                        iconSize(0.5F),
-                        iconAllowOverlap(false),
-                        iconAllowOverlap(false),
-                        textField(Expression.get(SAT_NAME)),
-                        textRadialOffset(2.0F),
-                        textAnchor(Property.TEXT_ANCHOR_BOTTOM),
-                        textAllowOverlap(false),
-                        textSize(labelsize),
-                        textColor(Color.WHITE)
-                )
+            .withProperties(
+                iconImage(UNCLUSTERED_ICON_ID),
+                iconSize(0.5F),
+                iconAllowOverlap(false),
+                iconAllowOverlap(false),
+                textField(Expression.get(SAT_NAME)),
+                textRadialOffset(2.0F),
+                textAnchor(Property.TEXT_ANCHOR_BOTTOM),
+                textAllowOverlap(false),
+                textSize(labelsize),
+                textColor(Color.WHITE)
+            )
         val clusteredLayer = SymbolLayer(CLUSTER_COUNT_LAYER, SOURCE_ID)
-                .withProperties(
-                    textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
-                    textSize(12.0F),
-                    textColor(Color.WHITE),
-                    textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
-                    textOffset(arrayOf(3f, -2f)),
-                    textIgnorePlacement(true),
-                    textAllowOverlap(true)
-                )
+            .withProperties(
+                textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
+                textSize(12.0F),
+                textColor(Color.WHITE),
+                textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
+                textOffset(arrayOf(3f, -2f)),
+                textIgnorePlacement(true),
+                textAllowOverlap(true)
+            )
         map.setStyle(Style.Builder().fromUri(Style.DARK)
-                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
-                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
-                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats), GeoJsonOptions()
-                        .withCluster(true)
-                        .withClusterMaxZoom(14)
-                        .withClusterRadius(50)))
-                .withLayer(unclusteredLayer))
+            .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
+            .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
+            .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats), GeoJsonOptions()
+                .withCluster(true)
+                .withClusterMaxZoom(14)
+                .withClusterRadius(50)))
+            .withLayer(unclusteredLayer))
         { style ->
             for (i in CLUSTER_LAYERS.indices) {
                 val id = CLUSTER_LAYERS[i].first
                 val clusterNum = CLUSTER_LAYERS[i].second
 
                 val layer = SymbolLayer(id, SOURCE_ID)
-                        .withProperties(iconImage(CLUSTERED_ICON_ID))
+                    .withProperties(iconImage(CLUSTERED_ICON_ID))
 
                 val pointCount = Expression.toNumber(Expression.get(CLUSTER_POINT_COUNT))
                 if (i == 0) {
                     layer.setFilter(
-                            Expression.all(
+                        Expression.all(
                             Expression.has(CLUSTER_POINT_COUNT),
                             Expression.gte(pointCount, Expression.literal(clusterNum))
-                    ))
+                        ))
                 }
                 else {
                     val prevClusterNum = CLUSTER_LAYERS[i-1].second
                     layer.setFilter(
-                            Expression.all(
+                        Expression.all(
                             Expression.has(CLUSTER_POINT_COUNT),
                             Expression.gte(pointCount, Expression.literal(clusterNum)),
                             Expression.lt(pointCount, Expression.literal(prevClusterNum))
-                    ))
+                        ))
                 }
 
                 style.addLayer(layer)
