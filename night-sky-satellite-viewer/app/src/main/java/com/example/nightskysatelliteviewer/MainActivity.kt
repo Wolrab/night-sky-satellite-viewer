@@ -37,12 +37,11 @@ import kotlinx.coroutines.channels.Channel
 const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 const val tleFileName = "gp.txt"
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateListener {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     // TODO: Use ViewModels for all these weird dangerous objects
     // MapBox related attributes
     private var mapView: MapView? = null
     private lateinit var map: MapboxMap
-    private var displayedSats = arrayListOf<Feature>()
     private var labelsize: Float = 15.0F
 
     val UNCLUSTERED_LAYER_ID = "SAT_LAYER"
@@ -103,7 +102,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
             while (true) {
                 delay(15000L)
                 if (conversionScopeSave != null)
-                    requestSatelliteUpdate("")
+                    requestSatelliteUpdate()
             }
         }
 
@@ -111,7 +110,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
             runOnUiThread(Runnable() {
                 toggleWaitNotifier(false, "")
             })
-            requestSatelliteUpdate("Initializing Satellites...")
+            requestSatelliteUpdate()
         }
 
         SatelliteManager.initialize(applicationContext, this)
@@ -122,46 +121,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
         }
     }
 
-    /**
-     * Launch both the producer and consumer of satellite data with respect
-     *   to current filter settings.
-     */
-    override fun requestSatelliteUpdate(message: String) {
-        conversionScopeSave?.cancel()
-
-        val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
-        conversionScopeSave = conversionScope
-        val conversionPipe = Channel<DisplaySatellite>()
-
-        toggleWaitNotifier(true, message)
-
-        conversionScope.launch {
-            tleConversion.initConversionPipelineAsync(conversionPipe, conversionScope)
-        }
-
-        conversionScope.launch {
-            val displayedSatsPipe = conversionPipe.iterator()
-            val displayedSatsBuffer = arrayListOf<Feature>()
-            while (isActive && displayedSatsPipe.hasNext()) {
-                val sat = displayedSatsPipe.next()
-
-                val feature = Feature.fromGeometry(Point.fromLngLat(sat.loc.longitude, sat.loc.latitude))
-                feature.addStringProperty(SAT_NAME, sat.name)
-                feature.addStringProperty(SAT_ID, sat.id)
-
-                displayedSatsBuffer.add(feature)
-            }
-            withContext(NonCancellable) {
-                displayedSats = displayedSatsBuffer
-
-                runOnUiThread(kotlinx.coroutines.Runnable() {
-                    updateMap()
-                    mapView!!.refreshDrawableState()
-                    toggleWaitNotifier(false, "")
-                })
-            }
-        }
-    }
+   
 
     private fun showToast(displayText: String) {
         val toastLen = Toast.LENGTH_SHORT
@@ -207,13 +167,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                 textAllowOverlap(true)
             )
         map.setStyle(Style.Builder().fromUri(Style.DARK)
-            .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
-            .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
-            .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSats), GeoJsonOptions()
-                .withCluster(true)
-                .withClusterMaxZoom(14)
-                .withClusterRadius(50)))
-            .withLayer(unclusteredLayer))
+                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
+                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
+                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSatellites), GeoJsonOptions()
+                        .withCluster(true)
+                        .withClusterMaxZoom(14)
+                        .withClusterRadius(50)))
+                .withLayer(unclusteredLayer))
         { style ->
             for (i in CLUSTER_LAYERS.indices) {
                 val id = CLUSTER_LAYERS[i].first
@@ -255,7 +215,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                     val name = feature.properties()!!.get(SAT_NAME)
                     val id = feature.properties()!!.get(SAT_ID)
                     if (name != null && id != null) {
-                        showToast("FOUND SATELLITE $name WITH ID $id")
+                        Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
                     } else if (feature.properties()!!.get(CLUSTER_POINT_COUNT) != null) {
                         showToast("Cluster with ${feature.properties()!!.get(CLUSTER_POINT_COUNT)} satellites found")
                     } else {

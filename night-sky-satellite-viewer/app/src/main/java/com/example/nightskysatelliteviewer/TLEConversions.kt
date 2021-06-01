@@ -92,7 +92,7 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
     }
 
     private fun getLatLng(satellite: String, epoch: Double): LatLng {
-        val pos = getSatellitePosition(satellite, epoch)
+        val pos = getSatellitePositionNormalized(satellite, epoch)
         val lat = calculateLatitude(pos)
         val lng = calculateLongitude(pos)
         return LatLng(lat, lng)
@@ -128,7 +128,7 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         return latitude
     }
 
-    private fun getSatellitePosition(satellite: String, epoch: Double): Array<Double> {
+    private fun getSatellitePositionNormalized(satellite: String, epoch: Double): Array<Double> {
         sdp4.NoradByName(StringReader(tle), satellite)
         sdp4.GetPosVel(epoch)
 
@@ -139,8 +139,7 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         factor *= 1000000
 
         // Flip the x and y axis as the library returns it backwards from the canonical ECEF system
-        // The units are in Gm, which appears to put distances near a value of ~1 (which unless I'm
-        // misremembering will lead to less floating point error).
+        // The units are in Gm
         val xScale = -factor
         val yScale = -factor
         val zScale = factor
