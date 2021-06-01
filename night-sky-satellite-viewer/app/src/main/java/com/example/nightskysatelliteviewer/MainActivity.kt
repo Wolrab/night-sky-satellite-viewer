@@ -34,11 +34,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         model.setMapView(mapView)
 
         val satelliteSearch = findViewById<EditText>(R.id.editTextSearch)
-        satelliteSearch.addTextChangedListener(
-            PrefixFilter(
-                this
-            )
-        )
+        model.setFilter(PrefixFilter(this)
+        satelliteSearch.addTextChangedListener(model.getFilter()))
 
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {

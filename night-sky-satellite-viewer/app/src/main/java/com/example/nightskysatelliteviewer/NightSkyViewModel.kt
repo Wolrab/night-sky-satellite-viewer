@@ -29,6 +29,7 @@ import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.produce
 
 class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
     // TODO: Move to strings.xml
@@ -60,8 +61,10 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
             it.value = CoroutineScope(Job() + Dispatchers.IO)
             it.value!!.launch {
                 delay(15000L)
-                if (conversionScopeSave.value != null)
+                while (conversionScopeSave.value == null) {}
+                    while (conversionScopeSave?.value!!.isActive) {// TODO: Do await instead of stupid-spin}
                     requestSatelliteUpdate()
+                }
             }
 
         }
@@ -124,11 +127,13 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
 
         toggleWaitNotifier(true, "Updating ")
 
-        conversionScope.launch {
+
+
+        val producer = conversionScope.async {
             tleConversion.value?.initConversionPipelineAsync(conversionPipe, conversionScope)
         }
 
-        conversionScope.launch {
+        val consumer = conversionScope.async {
             val displayedSatsPipe = conversionPipe.iterator()
             val displayedSatsBuffer = arrayListOf<Feature>()
             while (isActive && displayedSatsPipe.hasNext()) {
@@ -149,6 +154,10 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                     toggleWaitNotifier(false, "")
                 })
             }
+        }
+
+        val job = conversionScope.async {
+
         }
     }
 

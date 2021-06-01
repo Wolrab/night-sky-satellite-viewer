@@ -1,5 +1,6 @@
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
+import com.example.nightskysatelliteviewer.filtering.PrefixFilter
 import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import com.example.nightskysatelliteviewer.sdp4.SDP4NoSatException
@@ -34,6 +35,7 @@ class TLEConversion(val tleText: String) {
     private val eccSquared = 1 - (b / a).pow(2.0)
 
     private val maxUrlRetries = 5
+    private lateinit var filter: PrefixFilter
 
     // SDP4 library
     private val sdp4 = SDP4()
@@ -66,7 +68,6 @@ class TLEConversion(val tleText: String) {
             }
         }
 
-        val satellites = SatelliteFilter.iterator()
         val epoch = getJulianDate()
 
         while (scope.isActive && satellites.hasNext()) {
