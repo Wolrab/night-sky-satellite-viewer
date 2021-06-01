@@ -1,5 +1,6 @@
 package com.example.nightskysatelliteviewer
 
+import android.app.Activity
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
@@ -9,11 +10,14 @@ import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
-import kotlinx.coroutines.*
 import androidx.activity.viewModels
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.Observer
+import com.example.nightskysatelliteviewer.filtering.PrefixFilter
+import com.mapbox.geojson.Feature
+import com.mapbox.mapboxsdk.maps.MapboxMap
+import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     // MapBox related attributes
     private lateinit var mapView: MapView
 
@@ -26,11 +30,15 @@ class MainActivity : AppCompatActivity() {
 
         mapView = findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
-        mapView.getMapAsync(model)
+        mapView.getMapAsync(this)
         model.setMapView(mapView)
 
         val satelliteSearch = findViewById<EditText>(R.id.editTextSearch)
-        satelliteSearch.addTextChangedListener(SatelliteFilter)
+        satelliteSearch.addTextChangedListener(
+            PrefixFilter(
+                this
+            )
+        )
 
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
@@ -49,6 +57,26 @@ class MainActivity : AppCompatActivity() {
             })
             popup.show()
         }
+
+        SatelliteManager.onDbUpdateComplete = {
+            (context as Activity).runOnUiThread(kotlinx.coroutines.Runnable() {
+                toggleWaitNotifier(false, "")
+            })
+            model.requestSatelliteUpdate()
+        }
+
+        // TODO: If not wrong its stupid (what is context of the context's use?)
+        SatelliteManager.initialize(context, (context as MainActivity))
+        SatelliteManager.onDbUpdateStart = {
+            (context as Activity).runOnUiThread(kotlinx.coroutines.Runnable() {
+                toggleWaitNotifier(true, "Updating database...")
+            })
+        }
+
+        // Callback for changes to satellites
+        model.getDisplayedSatellites().observe(this, Observer<ArrayList<Feature>>{ satellites ->
+
+        })
     }
 
     public override fun onResume() {
@@ -84,5 +112,11 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         mapView.onSaveInstanceState(outState)
+    }
+
+    override fun onMapReady(mapboxMap: MapboxMap) {
+        val model: NightSkyViewModel by viewModels()
+        model.setMap(mapboxMap)
+        model.updateMap()
     }
 }

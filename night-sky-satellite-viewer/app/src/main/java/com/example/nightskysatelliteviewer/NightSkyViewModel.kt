@@ -3,7 +3,6 @@ package com.example.nightskysatelliteviewer
 import TLEConversion
 import android.app.Activity
 import android.app.Application
-import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PointF
@@ -16,13 +15,11 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.maps.MapboxMap
-import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
 import com.mapbox.mapboxsdk.maps.Style
 import com.mapbox.mapboxsdk.style.expressions.Expression
 import com.mapbox.mapboxsdk.style.layers.Property
@@ -33,7 +30,7 @@ import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 
-class NightSkyViewModel(application: Application) : AndroidViewModel(application), SatelliteUpdateListener, OnMapReadyCallback {
+class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
     // TODO: Move to strings.xml
     private val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
     private val UNCLUSTERED_LAYER_ID = "SAT_LAYER"
@@ -50,29 +47,7 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
 
     private val context = getApplication<Application>().applicationContext
     private lateinit var mapView: MapView
-
-    init {
-        SatelliteFilter.addSatelliteUpdateListener(this)
-        SatelliteManager.onDbUpdateComplete = {
-            (context as Activity).runOnUiThread(Runnable() {
-                toggleWaitNotifier(false, "")
-            })
-            requestSatelliteUpdate()
-        }
-
-        // TODO: If not wrong its stupid (what is context of the context's use?)
-        SatelliteManager.initialize(context, (context as MainActivity))
-        SatelliteManager.onDbUpdateStart = {
-            (context as Activity).runOnUiThread(Runnable() {
-                toggleWaitNotifier(true, "Updating database...")
-            })
-        }
-    }
-
-
-    private val map: MutableLiveData<MapboxMap> by lazy {
-        MutableLiveData<MapboxMap>()
-    }
+    private lateinit var map: MapboxMap
 
     private val displayedSatellites: MutableLiveData<ArrayList<Feature>> by lazy {
         MutableLiveData<ArrayList<Feature>>().also {
@@ -104,11 +79,11 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun getMap(): LiveData<MapboxMap> {
+    fun getMap(): MapboxMap {
         return map
     }
 
-    fun getSatellites(): LiveData<ArrayList<Feature>> {
+    fun getDisplayedSatellites(): LiveData<ArrayList<Feature>> {
         return displayedSatellites
     }
 
@@ -124,11 +99,23 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         this.mapView = mapView
     }
 
+    fun setMap(map: MapboxMap) {
+        this.map = map
+    }
+
+    fun bufferSatellites(satellites: List<Feature>) {
+
+    }
+
+    fun pushSatellites() {
+
+    }
+
     /**
      * Launch both the producer and consumer of satellite data with respect
      *   to current filter settings.
      */
-    override fun requestSatelliteUpdate() {
+    fun requestSatelliteUpdate() {
         conversionScopeSave.value?.cancel()
 
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -165,7 +152,7 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun updateMap() {
+    fun updateMap() {
         val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
                 .withProperties(
                         PropertyFactory.iconImage(UNCLUSTERED_ICON_ID),
@@ -189,7 +176,7 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                         PropertyFactory.textIgnorePlacement(true),
                         PropertyFactory.textAllowOverlap(true)
                 )
-        map.value?.setStyle(Style.Builder().fromUri(Style.DARK)
+        map.setStyle(Style.Builder().fromUri(Style.DARK)
                 .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(context.resources, R.drawable.sat), false)
                 .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(context.resources, R.drawable.sat_cluster), false)
                 .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSatellites.value!!), GeoJsonOptions()
@@ -220,18 +207,17 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                                     Expression.has(CLUSTER_POINT_COUNT),
                                     Expression.gte(pointCount, Expression.literal(clusterNum)),
                                     Expression.lt(pointCount, Expression.literal(prevClusterNum))
-                            ))
+                           ))
                 }
-
                 style.addLayer(layer)
             }
             style.addLayer(clusteredLayer)
         }
-        map.value?.addOnMapClickListener { point ->
-            val pixel: PointF = map.value?.projection?.toScreenLocation(point) ?: PointF(0F, 0F)
+        map.addOnMapClickListener { point ->
+            val pixel: PointF = map.projection?.toScreenLocation(point) ?: PointF(0F, 0F)
 
             val rect = 20F
-            val features: List<Feature> = map.value?.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)!!
+            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)!!
 
             for (feature in features) {
                 if (feature.properties() != null) {
@@ -249,14 +235,13 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                     Log.d("DEBUG", "Feature has no properties")
                 }
             }
-
             return@addOnMapClickListener true
         }
-        map.value?.addOnMapLongClickListener { point ->
-            val pixel: PointF = map.value?.projection?.toScreenLocation(point) ?: PointF(0F, 0F)
+        map.addOnMapLongClickListener { point ->
+            val pixel: PointF = map.projection?.toScreenLocation(point) ?: PointF(0F, 0F)
 
             val rect = 20F
-            val features: List<Feature> = map.value?.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)!!
+            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)!!
 
             for (feature in features) {
                 if (feature.properties() != null) {
@@ -293,10 +278,5 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
             waitNotifier.visibility = View.INVISIBLE
         }
         })
-    }
-
-    override fun onMapReady(mapboxMap: MapboxMap) {
-        map.value = mapboxMap
-        updateMap()
     }
 }
