@@ -10,7 +10,10 @@ import com.mapbox.mapboxsdk.geometry.LatLng
 import kotlinx.coroutines.*
 import kotlinx.coroutines.NonCancellable.isActive
 import kotlinx.coroutines.channels.Channel
+import java.io.BufferedReader
 import java.io.File
+import java.io.Reader
+import java.io.StringReader
 import java.net.URL
 import kotlin.math.*
 
@@ -37,6 +40,8 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
     private val b = 6357.0
     private val eccSquared = 1 - (b / a).pow(2.0)
 
+    private val maxUrlRetries = 5
+
     // SDP4 library
     private val sdp4 = SDP4()
 
@@ -44,12 +49,29 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
         sdp4.Init()
     }
 
-    private lateinit var path: String
+    private lateinit var tle: String
 
     suspend fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>, scope: CoroutineScope) {
-        if ( !this::path.isInitialized ) {
-            val file = createTemporaryFileFromUrl(fileDir, tleName, tleText)
-            path = file.absolutePath
+        var text = ""
+        if ( !this::tle.isInitialized ) {
+            var retries = 0
+            var done = false
+            while (retries < maxUrlRetries && !done) {
+                try {
+                    val url = URL(tleText)
+                    // TODO: Logic in case of connection failure?
+                    // - Alternative smaller API's we call?
+                    tle = url.readText()
+                    done = true
+                }
+                catch (e: Exception) {
+                    retries += 1
+                    // TODO: Notify user?
+                }
+            }
+            if (retries == maxUrlRetries) {
+                // TODO: "Hey buddy, get some internet!"
+            }
         }
 
         val satellites = SatelliteFilter.iterator()
@@ -67,19 +89,6 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
             }
         }
         outPipe.close()
-    }
-
-    private fun createTemporaryFileFromUrl(fileDir: File, tleName: String, tleText: String): File {
-        val file = File(fileDir, tleName)
-        file.deleteOnExit()
-
-        val url = URL(tleText)
-        // TODO: Logic in case of connection failure?
-        // - Alternative smaller API's we call?
-        val text = url.readText()
-        file.writeText(text)
-
-        return file
     }
 
     private fun getLatLng(satellite: String, epoch: Double): LatLng {
@@ -120,7 +129,7 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
     }
 
     private fun getSatellitePosition(satellite: String, epoch: Double): Array<Double> {
-        sdp4.NoradByName(path, satellite)
+        sdp4.NoradByName(StringReader(tle), satellite)
         sdp4.GetPosVel(epoch)
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
