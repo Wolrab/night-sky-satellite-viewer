@@ -33,7 +33,7 @@ import kotlin.math.*
  * The source for all the math used in conversions was found here.
  * https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
  */
-class TLEConversion(val fileDir: File, val tleName: String, val tleText: String) {
+class TLEConversion(val tleText: String) {
     // Parameters for the elipsoid that describes earth along
     //   with the square of the eccentricity for calculations later.
     private val a = 6378.0
@@ -52,7 +52,6 @@ class TLEConversion(val fileDir: File, val tleName: String, val tleText: String)
     private lateinit var tle: String
 
     suspend fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>, scope: CoroutineScope) {
-        var text = ""
         if ( !this::tle.isInitialized ) {
             var retries = 0
             var done = false

@@ -1,11 +1,6 @@
 package com.example.nightskysatelliteviewer
 
-import TLEConversion
 import android.content.Context
-import android.graphics.BitmapFactory
-import android.graphics.Color
-import android.graphics.PointF
-import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
@@ -17,52 +12,22 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.mapbox.geojson.Feature
-import com.mapbox.geojson.FeatureCollection
-import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
-import com.mapbox.mapboxsdk.maps.MapboxMap
-import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
-import com.mapbox.mapboxsdk.maps.Style
-import com.mapbox.mapboxsdk.style.expressions.Expression
-import com.mapbox.mapboxsdk.style.layers.Property
-import com.mapbox.mapboxsdk.style.layers.PropertyFactory.*
-import com.mapbox.mapboxsdk.style.layers.SymbolLayer
-import com.mapbox.mapboxsdk.style.sources.GeoJsonOptions
-import com.mapbox.mapboxsdk.style.sources.GeoJsonSource
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
+import androidx.activity.viewModels
 
-const val tleUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
-const val tleFileName = "gp.txt"
-
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
-    // TODO: Use ViewModels for all these weird dangerous objects
+class MainActivity : AppCompatActivity() {
     // MapBox related attributes
     private var mapView: MapView? = null
-    private lateinit var map: MapboxMap
-    private var labelsize: Float = 15.0F
-
-    val UNCLUSTERED_LAYER_ID = "SAT_LAYER"
-    val UNCLUSTERED_ICON_ID = "SAT_ICON"
-    val CLUSTERED_ICON_ID = "CLUSTER_ICON"
-    val CLUSTER_LAYERS = arrayOf("CLUSTER_1" to 150, "CLUSTER_2" to 20, "CLUSTER_3" to 0)
-    val CLUSTER_COUNT_LAYER = "COUNT"
-    val CLUSTER_POINT_COUNT = "point_count"
-    val SOURCE_ID = "SAT_SOURCE"
-
-    val SAT_NAME = "sat_name"
-    val SAT_ID = "sat_id"
 
     // Satellite data pipeline
-    private var conversionScopeSave: CoroutineScope? = null
-    private lateinit var updateScope: CoroutineScope
-
-    private lateinit var tleConversion: TLEConversion
+    lateinit var model: NightSkyViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val model: NightSkyViewModel by viewModels()
+        this.model = model
 
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token))
 
@@ -95,17 +60,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             popup.show()
         }
 
-        tleConversion = TLEConversion(this.filesDir, tleFileName, tleUrlText)
-
-        updateScope = CoroutineScope(Job() + Dispatchers.IO)
-        updateScope.launch {
-            while (true) {
-                delay(15000L)
-                if (conversionScopeSave != null)
-                    requestSatelliteUpdate()
-            }
-        }
-
         SatelliteManager.onDbUpdateComplete = {
             runOnUiThread(Runnable() {
                 toggleWaitNotifier(false, "")
@@ -119,8 +73,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 toggleWaitNotifier(true, "Updating database...")
             })
         }
-    }
 
+        model.getUpdateScope().value?.launch {
+            while (true) {
+                kotlinx.coroutines.delay(15000L)
+                if (conversionScopeSave != null)
+                    requestSatelliteUpdate()
+            }
+        }
+    }
    
 
     private fun showToast(displayText: String) {
@@ -129,7 +90,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         finishedToast.show()
     }
 
-    private fun toggleWaitNotifier(shown: Boolean, displayText: String) {
+    fun toggleWaitNotifier(shown: Boolean, displayText: String) {
         runOnUiThread(kotlinx.coroutines.Runnable() {
             val waitNotifier: LinearLayout = findViewById<LinearLayout>(R.id.waitNotification)
             if (shown) {
@@ -140,121 +101,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 waitNotifier.visibility = View.INVISIBLE
             }
         })
-    }
-
-    private fun updateMap() {
-        val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
-            .withProperties(
-                iconImage(UNCLUSTERED_ICON_ID),
-                iconSize(0.5F),
-                iconAllowOverlap(false),
-                iconAllowOverlap(false),
-                textField(Expression.get(SAT_NAME)),
-                textRadialOffset(2.0F),
-                textAnchor(Property.TEXT_ANCHOR_BOTTOM),
-                textAllowOverlap(false),
-                textSize(labelsize),
-                textColor(Color.WHITE)
-            )
-        val clusteredLayer = SymbolLayer(CLUSTER_COUNT_LAYER, SOURCE_ID)
-            .withProperties(
-                textField(Expression.toString(Expression.get(CLUSTER_POINT_COUNT))),
-                textSize(12.0F),
-                textColor(Color.WHITE),
-                textAnchor(Property.TEXT_ANCHOR_TOP_RIGHT),
-                textOffset(arrayOf(3f, -2f)),
-                textIgnorePlacement(true),
-                textAllowOverlap(true)
-            )
-        map.setStyle(Style.Builder().fromUri(Style.DARK)
-                .withImage(UNCLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat), false)
-                .withImage(CLUSTERED_ICON_ID, BitmapFactory.decodeResource(resources, R.drawable.sat_cluster), false)
-                .withSource( GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(displayedSatellites), GeoJsonOptions()
-                        .withCluster(true)
-                        .withClusterMaxZoom(14)
-                        .withClusterRadius(50)))
-                .withLayer(unclusteredLayer))
-        { style ->
-            for (i in CLUSTER_LAYERS.indices) {
-                val id = CLUSTER_LAYERS[i].first
-                val clusterNum = CLUSTER_LAYERS[i].second
-
-                val layer = SymbolLayer(id, SOURCE_ID)
-                    .withProperties(iconImage(CLUSTERED_ICON_ID))
-
-                val pointCount = Expression.toNumber(Expression.get(CLUSTER_POINT_COUNT))
-                if (i == 0) {
-                    layer.setFilter(
-                        Expression.all(
-                            Expression.has(CLUSTER_POINT_COUNT),
-                            Expression.gte(pointCount, Expression.literal(clusterNum))
-                        ))
-                }
-                else {
-                    val prevClusterNum = CLUSTER_LAYERS[i-1].second
-                    layer.setFilter(
-                        Expression.all(
-                            Expression.has(CLUSTER_POINT_COUNT),
-                            Expression.gte(pointCount, Expression.literal(clusterNum)),
-                            Expression.lt(pointCount, Expression.literal(prevClusterNum))
-                        ))
-                }
-
-                style.addLayer(layer)
-            }
-            style.addLayer(clusteredLayer)
-        }
-        map.addOnMapClickListener { point ->
-            val pixel: PointF = map.projection.toScreenLocation(point)
-
-            val rect = 20F
-            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)
-
-            for (feature in features) {
-                if (feature.properties() != null) {
-                    val name = feature.properties()!!.get(SAT_NAME)
-                    val id = feature.properties()!!.get(SAT_ID)
-                    if (name != null && id != null) {
-                        Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
-                    } else if (feature.properties()!!.get(CLUSTER_POINT_COUNT) != null) {
-                        showToast("Cluster with ${feature.properties()!!.get(CLUSTER_POINT_COUNT)} satellites found")
-                    } else {
-                        Log.d("DEBUG", "Non-satellite found")
-                    }
-                } else {
-                    Log.d("DEBUG", "Feature has no properties")
-                }
-            }
-
-            return@addOnMapClickListener true
-        }
-        map.addOnMapLongClickListener { point ->
-            val pixel: PointF = map.projection.toScreenLocation(point)
-
-            val rect = 20F
-            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)
-
-            for (feature in features) {
-                if (feature.properties() != null) {
-                    val name = feature.properties()!!.get(SAT_NAME)
-                    val id = feature.properties()!!.get(SAT_ID)
-                    if (name != null && id != null) {
-                        showToast("Favorited satellite $name WITH ID $id")
-                    } else {
-                        Log.d("DEBUG", "Non-satellite found")
-                    }
-                } else {
-                    Log.d("DEBUG", "Feature has no properties")
-                }
-            }
-
-            return@addOnMapLongClickListener true
-        }
-    }
-
-    override fun onMapReady(mapboxMap: MapboxMap) {
-        map = mapboxMap
-        updateMap()
     }
 
     public override fun onResume() {
