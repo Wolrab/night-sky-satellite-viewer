@@ -23,13 +23,15 @@ const val satelliteXmlUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?
 const val epochDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
 
 private val DATABASE_NAME  = "satelliteDB"
-private val ALL_SATS_TABLE_NAME = "satellites"
 private val DATABASE_Version: Int = 1
+
+private val ALL_SATS_TABLE_NAME = "satellites"
 
 private val COL_ID = "_id"
 private val COL_CELESTRAKID = "celestrakId"
 private val COL_NAME = "name"
 private val COL_EPOCH = "epoch"
+private val COL_TLE = "tle"
 
 private val FAVORITES_TABLE_NAME = "satelliteFavoritesDB"
 
@@ -63,14 +65,12 @@ object SatelliteManager {
         val updateJob = dbScope.launch {
             onDbUpdateStart?.invoke()
             waiting = true
-            //Log.d("DATABASE_DEBUG", "Starting database update")
             val satelliteXmlElements = getSatelliteNodeList()
             if (satelliteXmlElements != null) {
                 for (i in 0 until satelliteXmlElements.length) {
                     satelliteDbHelper.updateSatelliteFromXml((satelliteXmlElements.item(i) as Element))
                 }
             }
-            //Log.d("DATABASE_DEBUG", "Finished database update")
             waiting = false
             onDbUpdateComplete?.invoke()
         }
@@ -80,14 +80,12 @@ object SatelliteManager {
         satelliteDbHelper = SatelliteDBHelper(context)
         if (satelliteDbHelper.checkDbInitialized(context)) {
             numSatellites = satelliteDbHelper.getNumSatellites()
-            //Log.d("DATABASE_DEBUG", "found existing database with $numSatellites")
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {
             val updateJob = dbScope.launch {
             waiting = true
             onDbUpdateStart?.invoke()
-            //("DATABASE_DEBUG", "Starting database creation")
             val satelliteXmlElements = getSatelliteNodeList()
             if (satelliteXmlElements != null) {
                 numSatellites = satelliteXmlElements.length
@@ -95,7 +93,6 @@ object SatelliteManager {
                     satelliteDbHelper.addSatelliteFromXml((satelliteXmlElements.item(i) as Element))
                 }
             }
-            //Log.d("DATABASE_DEBUG", "Finished database creation")
             waiting = false
             onDbUpdateComplete?.invoke()
             }
@@ -126,11 +123,15 @@ object SatelliteManager {
 
 class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_Version){
 
-    private var CREATE_TABLE = "CREATE TABLE $ALL_SATS_TABLE_NAME " +
+    private var CREATE_SATS_TABLE = "CREATE TABLE $ALL_SATS_TABLE_NAME " +
             "($COL_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "$COL_CELESTRAKID VARCHAR(255), " +
             "$COL_NAME VARCHAR(255), " +
             "$COL_EPOCH VARCHAR(255));"
+
+    private var CREATE_FAVORITES_TABLE = "CREATE TABLE $FAVORITES_TABLE_NAME " +
+            "($COL_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            "$COL_CELESTRAKID VARCHAR(255));"
 
     private var DROP_MAIN_TABLE = "DROP TABLE IF EXISTS $ALL_SATS_TABLE_NAME"
 
@@ -138,11 +139,13 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
 
     override fun onCreate(db: SQLiteDatabase?) {
         try {
-            db?.execSQL(CREATE_TABLE)
-            satellitesDb = db!!
+            db?.execSQL(CREATE_SATS_TABLE)
+            db?.execSQL(CREATE_FAVORITES_TABLE)
+
         } catch (e: SQLiteException){
             throw Exception("Error creating database")
         }
+        satellitesDb = db!!
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {

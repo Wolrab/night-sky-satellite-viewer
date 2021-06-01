@@ -234,9 +234,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
                     val name = feature.properties()!!.get(SAT_NAME)
                     val id = feature.properties()!!.get(SAT_ID)
                     if (name != null && id != null) {
-                        Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
+                        showToast("FOUND SATELLITE $name WITH ID $id")
                     } else if (feature.properties()!!.get(CLUSTER_POINT_COUNT) != null) {
-                        Log.d("DEBUG", "Cluster with ${feature.properties()!!.get(CLUSTER_POINT_COUNT)} satellites found")
+                        showToast("Cluster with ${feature.properties()!!.get(CLUSTER_POINT_COUNT)} satellites found")
                     } else {
                         Log.d("DEBUG", "Non-satellite found")
                     }
@@ -246,6 +246,28 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, SatelliteUpdateLis
             }
 
             return@addOnMapClickListener true
+        }
+        map.addOnMapLongClickListener { point ->
+            val pixel: PointF = map.projection.toScreenLocation(point)
+
+            val rect = 20F
+            val features: List<Feature> = map.queryRenderedFeatures(RectF(pixel.x -rect,pixel.y -rect,pixel.x +rect,pixel.y +rect), UNCLUSTERED_LAYER_ID)
+
+            for (feature in features) {
+                if (feature.properties() != null) {
+                    val name = feature.properties()!!.get(SAT_NAME)
+                    val id = feature.properties()!!.get(SAT_ID)
+                    if (name != null && id != null) {
+                        showToast("Favorited satellite $name WITH ID $id")
+                    } else {
+                        Log.d("DEBUG", "Non-satellite found")
+                    }
+                } else {
+                    Log.d("DEBUG", "Feature has no properties")
+                }
+            }
+
+            return@addOnMapLongClickListener true
         }
     }
 
