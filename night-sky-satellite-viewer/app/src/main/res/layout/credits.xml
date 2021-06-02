@@ -38,20 +38,4 @@
         android:textSize="22sp"
         android:text="\tConnor Barlow\n\tWalker Herring\n\tZachary Wichman" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:textSize="22sp"
-        android:textColor="@color/white"
-        android:text="Loading Image is galaxy NGC4414:" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:textColor="@color/white"
-        android:textSize="22sp"
-        android:text="Image from NASA/NSSDC" />
-
 </LinearLayout>

@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         val model: NightSkyViewModel by viewModels()
 
         onMapInitialized = {
-            updateMap(model.displayedSatellites)
+            updateMap(model.getDisplayedSatellites())
         }
 
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
@@ -120,6 +120,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     }
 
     private fun updateMap(satellites: MutableList<Feature>) {
+        val model: NightSkyViewModel by viewModels()
+        model.clearBufferedSatellites()
         runOnUiThread {
             val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
                 .withProperties(
@@ -367,11 +369,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         updateScope.launch {
             Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
             requestSatelliteUpdateAsync().await()
-            updateMap(model.displayedSatellites)
+            updateMap(model.getDisplayedSatellites())
             while (true) {
                 delay(autoupdateWaitTime)
                 requestSatelliteUpdateAsync().await()
-                updateMap(model.displayedSatellites)
+                updateMap(model.getDisplayedSatellites())
             }
         }
     }
