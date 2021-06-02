@@ -3,8 +3,4 @@
     <item android:id="@+id/about"
         android:icon="@drawable/refresh"
         android:title="About" />
-    <item android:id="@+id/opt_2"
-        android:title="Option 2" />
-    <item android:id="@+id/opt_3"
-        android:title="Option 3" />
 </menu>

@@ -98,8 +98,6 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         return displayedSatellites
     }
 
-
-
     fun setMapView(mapView: MapView) {
         this.mapView = mapView
     }
@@ -118,8 +116,6 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
         conversionScopeSave.value = conversionScope
         val conversionPipe = Channel<DisplaySatellite>()
-
-        toggleWaitNotifier(true, "Updating ")
 
         val producer = conversionScope.async {
             // TODO: Add chunking of data for smoother loading?
@@ -283,5 +279,47 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
             waitNotifier.visibility = View.INVISIBLE
         }
         })
+    }
+
+    @SuppressLint("MissingPermission")
+    fun enableLocationComponent(loadedMapStyle: Style) {
+        // Request location permissions if not granted
+        Log.d("DEBUG", "Hi")
+        if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            Log.d("DEBUG", "Hello")
+            val customLocationComponentOptions = LocationComponentOptions.builder(this)
+                    .trackingGesturesManagement(true)
+                    .accuracyColor(ContextCompat.getColor(this, R.color.mapbox_blue))
+                    .build()
+            val locationComponentActivationOptions = LocationComponentActivationOptions.builder(this, loadedMapStyle)
+                    .locationComponentOptions(customLocationComponentOptions)
+                    .build()
+
+            map.locationComponent.apply {
+                activateLocationComponent(locationComponentActivationOptions)
+                isLocationComponentEnabled = true
+                cameraMode = CameraMode.TRACKING
+                renderMode = RenderMode.COMPASS
+
+                try {
+                    var lastKnownLocation = map.getLocationComponent().getLastKnownLocation()
+                    var camPosition = CameraPosition.Builder()
+                            .target(LatLng(lastKnownLocation))
+                            .zoom(6.0)
+                            .tilt(20.0)
+                            .build()
+                    map.cameraPosition = camPosition
+                } catch (e: Exception) {
+                    Log.d("DEBUG", "Couldn't get GPS location")
+                }
+            }
+        } else {
+            permissionsManager = PermissionsManager(this)
+            permissionsManager.requestLocationPermissions(this)
+        }
+    }
+
+    override fun onExplanationNeeded(permissionsToExplain: List<String>) {
+        Toast.makeText(this, R.string.user_location_permission_explanation, Toast.LENGTH_LONG).show()
     }
 }

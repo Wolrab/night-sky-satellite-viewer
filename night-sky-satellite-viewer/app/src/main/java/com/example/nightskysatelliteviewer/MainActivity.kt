@@ -3,8 +3,11 @@ package com.example.nightskysatelliteviewer
 import android.app.Activity
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.MenuItem
+import android.view.View
 import android.widget.EditText
+import android.widget.PopupWindow
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -16,6 +19,7 @@ import com.example.nightskysatelliteviewer.filtering.PrefixFilter
 import com.mapbox.geojson.Feature
 import com.mapbox.mapboxsdk.maps.MapboxMap
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback
+import androidx.appcompat.widget.PopupMenu
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     // MapBox related attributes
@@ -42,8 +46,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 when (item!!.itemId) {
                     R.id.about -> {
                         //Toast.makeText(this@MainActivity, item.title, Toast.LENGTH_SHORT).show()
-                        //TODO: Inflate textview with credits
-                        Log.d("DEBUG", "you clicked " + item.title)
+                        var popupWindow = PopupWindow(this)
+                        var layout: View = layoutInflater.inflate(R.layout.credits, null)
+                        popupWindow.contentView = layout
+                        popupWindow.isOutsideTouchable = true
+                        popupWindow.isFocusable = true
+                        popupWindow.showAtLocation(layout, Gravity.CENTER, 0,0)
                     }
                 }
                 true
@@ -53,7 +61,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Callback for changes to satellites
         model.getDisplayedSatellites().observe(this, Observer<ArrayList<Feature>>{ satellites ->
-
+            
         })
     }
 
