@@ -30,7 +30,9 @@ private val ALL_SATS_TABLE_NAME = "satellites"
 
 private val COL_ID = "_id"
 private val COL_CELESTRAKID = "celestrakId"
-private val COL_TLE = "tle"
+private val COL_TLEONE = "tleOne"
+private val COL_TLETWO = "tleTwo"
+private val COL_TLETHREE = "tleThree"
 private val COL_NAME = "name"
 private val COL_IS_FAVORITE = "isFavorite"
 
@@ -78,20 +80,18 @@ object SatelliteManager {
         return urlText
     }
 
-    private fun getTleStrings(): List<String> {
-        val tleText = getUrlText(satelliteTlelUrlText).trim()
-        val linesList: MutableList<String> = tleText.lines().toMutableList()
-        val threeLinesList: MutableList<String> = mutableListOf<String>()
-        while (!linesList.isEmpty()) {
-            var threeLines = ""
-            for (i in 0 until 3) {
-                val nextLine = linesList.first()
-                linesList.removeAt(0)
-                threeLines += nextLine
+    private fun getTleStrings(): List<List<String>> {
+        val tleText = getUrlText(satelliteTlelUrlText)
+        val linesList: List<String> = tleText.lines()
+        val tleList: MutableList<List<String>> = mutableListOf()
+        for (i in 0 until (linesList.size-3) step 3) {
+            val tle = mutableListOf<String>()
+            for (j in 0 until 3) {
+                tle.add(linesList[i + j])
             }
-            threeLinesList.add(threeLines)
+            tleList.add(tle)
         }
-        return threeLinesList
+        return tleList
     }
 
     private fun getSatelliteNodeList(): NodeList? {
@@ -177,7 +177,9 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
             "($COL_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "$COL_CELESTRAKID VARCHAR(255), " +
             "$COL_NAME VARCHAR(255), " +
-            "$COL_TLE VARCHAR(255), " +
+            "$COL_TLEONE VARCHAR(255), " +
+            "$COL_TLETWO VARCHAR(255), " +
+            "$COL_TLETHREE VARCHAR(255), " +
             "$COL_IS_FAVORITE INTEGER DEFAULT '0');"
 
     private var DROP_MAIN_TABLE = "DROP TABLE IF EXISTS $ALL_SATS_TABLE_NAME"
@@ -232,24 +234,28 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         result.close()
     }
 
-    fun updateSatelliteFromXmlTle(xmlElement: Element, tleString: String) {
+    fun updateSatelliteFromXmlTle(xmlElement: Element, tle: List<String>) {
         val name = getElementContent(xmlElement, "OBJECT_NAME")
         val id = getElementContent(xmlElement, "OBJECT_ID")
         val database = this.writableDatabase
         val contentValues = ContentValues()
         contentValues.put(COL_NAME, name)
-        contentValues.put(COL_TLE, tleString)
+        contentValues.put(COL_TLEONE, tle[0])
+        contentValues.put(COL_TLETWO, tle[1])
+        contentValues.put(COL_TLETHREE, tle[2])
         database.update(ALL_SATS_TABLE_NAME, contentValues, "$COL_CELESTRAKID=?", arrayOf(id))
     }
 
-    fun addSatelliteFromXmlTle(xmlElement: Element, tleString: String) {
+    fun addSatelliteFromXmlTle(xmlElement: Element, tle: List<String>) {
         val name = getElementContent(xmlElement, "OBJECT_NAME")
         val id = getElementContent(xmlElement, "OBJECT_ID")
         val database = this.writableDatabase
         val contentValues = ContentValues()
         contentValues.put(COL_NAME, name)
         contentValues.put(COL_CELESTRAKID, id)
-        contentValues.put(COL_TLE, tleString)
+        contentValues.put(COL_TLEONE, tle[0])
+        contentValues.put(COL_TLETWO, tle[1])
+        contentValues.put(COL_TLETHREE, tle[2])
         database.insert(ALL_SATS_TABLE_NAME, null, contentValues)
     }
 
@@ -277,7 +283,9 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         private fun getSatelliteAtCursor(cursor: Cursor): Satellite {
             val name = cursor.getString(cursor.getColumnIndex(COL_NAME))
             val celestrakId = cursor.getString(cursor.getColumnIndex(COL_CELESTRAKID))
-            val tleString = cursor.getString(cursor.getColumnIndex(COL_TLE))
+            var tleString = cursor.getString(cursor.getColumnIndex(COL_TLEONE))+ "\n" +
+                    cursor.getString(cursor.getColumnIndex(COL_TLETWO)) + "\n" +
+                    cursor.getString(cursor.getColumnIndex(COL_TLETHREE))
             return Satellite(name, celestrakId, tleString)
         }
     }

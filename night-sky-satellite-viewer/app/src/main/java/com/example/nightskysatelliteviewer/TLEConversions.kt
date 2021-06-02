@@ -66,20 +66,24 @@ object TLEConversion {
 
     private fun calculateLatitude(pos: Array<Double>): Double {
         val r = sqrt(pos[0].pow(2) + pos[1].pow(2))
-        val er2 = (a.pow(2) - b.pow(2))/b.pow(2)
+        val er2 = (a.pow(2) - b.pow(2)) / b.pow(2)
         val F = 54 * b.pow(2) * pos[2].pow(2)
-        val G = r.pow(2) + (1-eccSquared)*pos[2].pow(2)-eccSquared*(a.pow(2) - b.pow(2))
-        val c = (eccSquared.pow(2)*F*r.pow(2))/G.pow(3)
-        val s = (1+c+sqrt(c.pow(2)+2*c)).pow(0.333333)
-        val P = F/(3*(s+1+1/s)*G.pow(2))
-        val Q = sqrt(1+2*eccSquared.pow(2)*P)
-        val r0 = -(P*eccSquared*r)/(1+Q)+sqrt(0.5*a.pow(2)*(1+1/Q)-(P*(1-eccSquared)*pos[2])/(Q*(1+Q)-0.5*P*r.pow(2)))
-        val U = sqrt((r-eccSquared*r0).pow(2)+pos[2].pow(2))
-        val V = sqrt((r-eccSquared*r0).pow(2)+(1-eccSquared)*pos[2].pow(2))
-        val z0 = (b.pow(2)*pos[2])/(a*V)
+        val G = r.pow(2) + (1 - eccSquared) * pos[2].pow(2) - eccSquared * (a.pow(2) - b.pow(2))
+        val c = (eccSquared.pow(2) * F * r.pow(2)) / G.pow(3)
+        val s = (1 + c + sqrt(c.pow(2) + 2 * c)).pow(0.333333)
+        val P = F / (3 * (s + 1 + 1 / s) * G.pow(2))
+        val Q = sqrt(1 + 2 * eccSquared.pow(2) * P)
+        val r0 = -(P * eccSquared * r) / (1 + Q) + sqrt(
+            0.5 * a.pow(2) * (1 + 1 / Q) - (P * (1 - eccSquared) * pos[2]) / (Q * (1 + Q) - 0.5 * P * r.pow(
+                2
+            ))
+        )
+        val U = sqrt((r - eccSquared * r0).pow(2) + pos[2].pow(2))
+        val V = sqrt((r - eccSquared * r0).pow(2) + (1 - eccSquared) * pos[2].pow(2))
+        val z0 = (b.pow(2) * pos[2]) / (a * V)
 
-        val h = U*(1-b.pow(2)/(a*V))
-        val ratio = (pos[2]+er2*z0)/r
+        val h = U * (1 - b.pow(2) / (a * V))
+        val ratio = (pos[2] + er2 * z0) / r
         var latitude = atan(ratio)
 
         latitude = Math.toDegrees(latitude)
@@ -103,7 +107,8 @@ object TLEConversion {
         val yScale = -factor
         val zScale = factor
 
-        val pos: Array<Double> = arrayOf(sdp4.itsR[0] * xScale, sdp4.itsR[1] * yScale, sdp4.itsR[2] * zScale)
+        val pos: Array<Double> =
+            arrayOf(sdp4.itsR[0] * xScale, sdp4.itsR[1] * yScale, sdp4.itsR[2] * zScale)
         return pos
     }
 
@@ -116,36 +121,4 @@ object TLEConversion {
         val julianDate = System.currentTimeMillis().toDouble() / 86400000.0 + 587.5 - 10000.0
         return julianDate
     }
-
-//    suspend fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>, scope: CoroutineScope) {
-//        if ( !this::tle.isInitialized ) {
-//            var retries = 0
-//            var done = false
-//            while (retries < maxUrlRetries && !done) {
-//                try {
-//                    val url = URL(tleText)
-//                    // TODO: Logic in case of connection failure?
-//                    // - Alternative smaller API's we call?
-//                    tle = url.readText()
-//                    done = true
-//                }
-//                catch (e: Exception) {
-//                    retries += 1
-//                    // TODO: Notify user?
-//                }
-//            }
-//            if (retries == maxUrlRetries) {
-//                // TODO: "Hey buddy, get some internet!"
-//            }
-//        }
-//
-//        val epoch = getJulianDate()
-//
-//// TODO: Fill in with real DB-TLEConversion communication
-//        val satellites = SatelliteManager.getSatellitesIterator()
-//        while (scope.isActive && satellites.hasNext()) {
-//            outPipe.send(satellites.next())
-//        }
-//        outPipe.close()
-//    }
 }
