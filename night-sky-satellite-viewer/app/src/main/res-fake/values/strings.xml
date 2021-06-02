@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Satellite Viewer</string>
+    <string name="mapbox_access_token">sk.eyJ1Ijoic2F0ZWxsaXRlYXBwZGV2cyIsImEiOiJja3A1eTI3Z2IwMW53MndwNW1jc3cyeWl0In0.9TWYBkVHfsBpNPaKDIJy3w</string>
+    <string name="wait">Updating, please wait...</string>
+</resources>

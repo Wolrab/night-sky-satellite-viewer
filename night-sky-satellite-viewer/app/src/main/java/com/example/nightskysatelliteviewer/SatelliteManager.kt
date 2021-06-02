@@ -8,7 +8,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
-import android.util.Log
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element

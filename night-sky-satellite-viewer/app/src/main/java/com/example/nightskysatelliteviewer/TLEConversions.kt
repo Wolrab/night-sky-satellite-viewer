@@ -1,6 +1,8 @@
+import android.graphics.Point
 import android.graphics.PointF
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
+import com.example.nightskysatelliteviewer.Satellite
 import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.filtering.PrefixFilter
 import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
@@ -43,11 +45,11 @@ object TLEConversion {
         sdp4.Init()
     }
 
-    fun tleToLatLng(tleString: String, satellite: String): PointF {
-        val pos = getSatellitePositionNormalized(tleString, satellite, getJulianDate())
+    fun satelliteToLatLng(satellite: Satellite): Pair<Double, Double> {
+        val pos = getSatellitePositionNormalized(satellite, getJulianDate())
         val lat = calculateLatitude(pos)
         val lng = calculateLongitude(pos)
-        return PointF(lat.toFloat(), lng.toFloat())
+        return Pair(lat, lng)
     }
 
     private fun calculateLongitude(pos: Array<Double>): Double {
@@ -80,8 +82,8 @@ object TLEConversion {
         return latitude
     }
 
-    private fun getSatellitePositionNormalized(tleString: String, satellite: String, epoch: Double): Array<Double> {
-        sdp4.NoradByName(StringReader(tleString), satellite)
+    private fun getSatellitePositionNormalized(satellite: Satellite, epoch: Double): Array<Double> {
+        sdp4.NoradByName(StringReader(satellite.tleString), satellite.name)
         sdp4.GetPosVel(epoch)
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.

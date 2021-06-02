@@ -42,6 +42,7 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
     private val SOURCE_ID = "SAT_SOURCE"
     private val SAT_NAME = "sat_name"
     private val SAT_ID = "sat_id"
+    private val SAT_TLE = "sat_tle"
 
     private val labelsize: Float = 15.0F
 
@@ -83,10 +84,10 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun getMap(): MapboxMap {
+        return map
+    }
 // TODO: May need later
-//    fun getMap(): MapboxMap {
-//        return map
-//    }
 //    fun getUpdateScope(): LiveData<CoroutineScope> {
 //        return updateScope
 //    }
@@ -115,24 +116,22 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
 
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
         conversionScopeSave.value = conversionScope
-        val conversionPipe = Channel<DisplaySatellite>()
 
-        val producer = conversionScope.async {
-            // TODO: Add chunking of data for smoother loading?
-            for (satellite in SatelliteManager.getSatellitesIterator()) {
-                conversionPipe.send(satellite)
-            }
-        }
 
-        val consumer = conversionScope.async {
-            val displayedSatsPipe = conversionPipe.iterator()
+
+        return conversionScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
-            while (isActive && displayedSatsPipe.hasNext()) {
-                val sat = displayedSatsPipe.next()
+            for (satellite in SatelliteManager.getSatellitesIterator()) {
+                val pair = TLEConversion.satelliteToLatLng(satellite)
 
-                val feature = Feature.fromGeometry(Point.fromLngLat(sat.loc.longitude, sat.loc.latitude))
-                feature.addStringProperty(SAT_NAME, sat.name)
-                feature.addStringProperty(SAT_ID, sat.id)
+                val lat = pair.first
+                val lng = pair.second
+
+                val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
+                feature.addStringProperty(SAT_NAME, satellite.name)
+                feature.addStringProperty(SAT_ID, satellite.id)
+                feature.addStringProperty(SAT_TLE, satellite.tleString)
+                // TODO: MORE PROPERTIES MOTHERFUCKERRRRRRRRRRRRRRR
 
                 displayedSatsBuffer.add(feature)
             }
@@ -145,11 +144,6 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                     toggleWaitNotifier(false, "")
                 })
             }
-        }
-
-        return conversionScope.async {
-            producer.await()
-            consumer.await()
         }
     }
 
@@ -281,45 +275,4 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         })
     }
 
-    @SuppressLint("MissingPermission")
-    fun enableLocationComponent(loadedMapStyle: Style) {
-        // Request location permissions if not granted
-        Log.d("DEBUG", "Hi")
-        if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            Log.d("DEBUG", "Hello")
-            val customLocationComponentOptions = LocationComponentOptions.builder(this)
-                    .trackingGesturesManagement(true)
-                    .accuracyColor(ContextCompat.getColor(this, R.color.mapbox_blue))
-                    .build()
-            val locationComponentActivationOptions = LocationComponentActivationOptions.builder(this, loadedMapStyle)
-                    .locationComponentOptions(customLocationComponentOptions)
-                    .build()
-
-            map.locationComponent.apply {
-                activateLocationComponent(locationComponentActivationOptions)
-                isLocationComponentEnabled = true
-                cameraMode = CameraMode.TRACKING
-                renderMode = RenderMode.COMPASS
-
-                try {
-                    var lastKnownLocation = map.getLocationComponent().getLastKnownLocation()
-                    var camPosition = CameraPosition.Builder()
-                            .target(LatLng(lastKnownLocation))
-                            .zoom(6.0)
-                            .tilt(20.0)
-                            .build()
-                    map.cameraPosition = camPosition
-                } catch (e: Exception) {
-                    Log.d("DEBUG", "Couldn't get GPS location")
-                }
-            }
-        } else {
-            permissionsManager = PermissionsManager(this)
-            permissionsManager.requestLocationPermissions(this)
-        }
-    }
-
-    override fun onExplanationNeeded(permissionsToExplain: List<String>) {
-        Toast.makeText(this, R.string.user_location_permission_explanation, Toast.LENGTH_LONG).show()
-    }
 }
