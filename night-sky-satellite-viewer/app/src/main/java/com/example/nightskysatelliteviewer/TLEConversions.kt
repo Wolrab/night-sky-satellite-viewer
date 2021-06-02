@@ -1,3 +1,4 @@
+import android.graphics.PointF
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
 import com.example.nightskysatelliteviewer.SatelliteManager
@@ -28,15 +29,12 @@ import kotlin.math.*
  * The source for all the math used in conversions was found here.
  * https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
  */
-class TLEConversion(val tleText: String) {
+object TLEConversion {
     // Parameters for the elipsoid that describes earth along
     //   with the square of the eccentricity for calculations later.
     private val a = 6378.0
     private val b = 6357.0
     private val eccSquared = 1 - (b / a).pow(2.0)
-
-    private val maxUrlRetries = 5
-    private lateinit var filter: PrefixFilter
 
     // SDP4 library
     private val sdp4 = SDP4()
@@ -45,45 +43,11 @@ class TLEConversion(val tleText: String) {
         sdp4.Init()
     }
 
-    private lateinit var tle: String
-
-    suspend fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>, scope: CoroutineScope) {
-        if ( !this::tle.isInitialized ) {
-            var retries = 0
-            var done = false
-            while (retries < maxUrlRetries && !done) {
-                try {
-                    val url = URL(tleText)
-                    // TODO: Logic in case of connection failure?
-                    // - Alternative smaller API's we call?
-                    tle = url.readText()
-                    done = true
-                }
-                catch (e: Exception) {
-                    retries += 1
-                    // TODO: Notify user?
-                }
-            }
-            if (retries == maxUrlRetries) {
-                // TODO: "Hey buddy, get some internet!"
-            }
-        }
-
-        val epoch = getJulianDate()
-
-// TODO: Fill in with real DB-TLEConversion communication
-        val satellites = SatelliteManager.getSatellitesIterator()
-        while (scope.isActive && satellites.hasNext()) {
-            outPipe.send(satellites.next())
-        }
-        outPipe.close()
-    }
-
-    private fun getLatLng(satellite: String, epoch: Double): LatLng {
-        val pos = getSatellitePositionNormalized(satellite, epoch)
+    fun tleToLatLng(tleString: String, satellite: String): PointF {
+        val pos = getSatellitePositionNormalized(tleString, satellite, getJulianDate())
         val lat = calculateLatitude(pos)
         val lng = calculateLongitude(pos)
-        return LatLng(lat, lng)
+        return PointF(lat.toFloat(), lng.toFloat())
     }
 
     private fun calculateLongitude(pos: Array<Double>): Double {
@@ -116,8 +80,8 @@ class TLEConversion(val tleText: String) {
         return latitude
     }
 
-    private fun getSatellitePositionNormalized(satellite: String, epoch: Double): Array<Double> {
-        sdp4.NoradByName(StringReader(tle), satellite)
+    private fun getSatellitePositionNormalized(tleString: String, satellite: String, epoch: Double): Array<Double> {
+        sdp4.NoradByName(StringReader(tleString), satellite)
         sdp4.GetPosVel(epoch)
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
@@ -146,4 +110,35 @@ class TLEConversion(val tleText: String) {
         return julianDate
     }
 
+//    suspend fun initConversionPipelineAsync(outPipe: Channel<DisplaySatellite>, scope: CoroutineScope) {
+//        if ( !this::tle.isInitialized ) {
+//            var retries = 0
+//            var done = false
+//            while (retries < maxUrlRetries && !done) {
+//                try {
+//                    val url = URL(tleText)
+//                    // TODO: Logic in case of connection failure?
+//                    // - Alternative smaller API's we call?
+//                    tle = url.readText()
+//                    done = true
+//                }
+//                catch (e: Exception) {
+//                    retries += 1
+//                    // TODO: Notify user?
+//                }
+//            }
+//            if (retries == maxUrlRetries) {
+//                // TODO: "Hey buddy, get some internet!"
+//            }
+//        }
+//
+//        val epoch = getJulianDate()
+//
+//// TODO: Fill in with real DB-TLEConversion communication
+//        val satellites = SatelliteManager.getSatellitesIterator()
+//        while (scope.isActive && satellites.hasNext()) {
+//            outPipe.send(satellites.next())
+//        }
+//        outPipe.close()
+//    }
 }
