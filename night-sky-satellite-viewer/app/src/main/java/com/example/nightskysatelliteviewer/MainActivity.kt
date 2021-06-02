@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
 import android.view.MenuItem
@@ -19,6 +21,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.Observer
 //import com.example.nightskysatelliteviewer.filtering.PrefixFilter
 import com.mapbox.android.core.permissions.PermissionsListener
@@ -64,6 +67,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private val autoupdateWaitTime = 5000L
 
     private val labelsize: Float = 15.0F
+    private lateinit var contextIterator: Iterator<Satellite>
 
     private var onMapInitialized: (()->Unit)? = null
 
@@ -94,6 +98,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
             updateMap(model.getDisplayedSatellites())
         }
 
+        contextIterator = SatelliteManager.getSatellitesIterator()
+
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
             var popup = PopupMenu(this, menu_button)
@@ -116,8 +122,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
             popup.show()
         }
 
+        val searchBar: EditText = findViewById(R.id.editTextSearch)
+        searchBar.doOnTextChanged { text, _, _, _ ->
+            contextIterator = SatelliteManager.getMatchingNameSatellitesIterator(text.toString())
+        }
         startAutoUpdates()
     }
+
 
     private fun updateMap(satellites: MutableList<Feature>) {
         val model: NightSkyViewModel by viewModels()
@@ -378,23 +389,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         }
     }
 
-
     /**
-     * TODO: CODE COPYING NAUGHTY BOYS
-     * Launch both the producer and consumer of satellite data.
-     * Return an asynchronous job to await full group completion.
-     */
+     * Asynchronously generates all the satellite
+     * features and buffers the satellites features
+     * into the ViewModel afterwards.*/
     private fun requestSatelliteUpdateAsync(): Deferred<Any> {
         val model: NightSkyViewModel by viewModels()
+        Log.d("DEBUG", "==============STARTING REQUEST===============")
         return updateScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
-            for (satellite in SatelliteManager.getSatellitesIterator()) {
-                //Log.d("DEBUGGING", "PROCESSING SAT: ${satellite.name}")
-                Log.d("DEBUG", "sat with tle ${satellite.tleString}")
+            for (satellite in contextIterator) {
+                Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
                 val pair = TLEConversion.satelliteToLatLng(satellite)
                 if (pair != null) {
-                    Log.d("DEBUG", "nice!!!!!!")
                     val lat = pair.first
                     val lng = pair.second
 
@@ -404,11 +412,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                     feature.addStringProperty(SAT_TLE, satellite.tleString)
                     // TODO: More satellite properties can be cached by adding them to the feature
 
-                    model.bufferDisplayedSatellites(arrayListOf(feature))
-                } else {
-                    Log.d("DEBUG", "shit lol")
+                    displayedSatsBuffer.add(feature)
                 }
             }
+            model.bufferDisplayedSatellites(displayedSatsBuffer)
+            Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
 
