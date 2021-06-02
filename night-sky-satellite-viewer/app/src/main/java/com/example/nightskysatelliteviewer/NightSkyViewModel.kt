@@ -1,6 +1,5 @@
 package com.example.nightskysatelliteviewer
 
-import TLEConversion
 import android.app.Activity
 import android.app.Application
 import android.graphics.BitmapFactory
@@ -47,56 +46,59 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
     private val labelsize: Float = 15.0F
 
     private val context = getApplication<Application>().applicationContext
+    private val modelInitScope = CoroutineScope(Job() + Dispatchers.IO)
     private lateinit var mapView: MapView
     private lateinit var map: MapboxMap
 
     private val displayedSatellites: MutableLiveData<ArrayList<Feature>> by lazy {
         MutableLiveData<ArrayList<Feature>>().also {
-            requestSatelliteUpdate()
+            modelInitScope.launch {
+                requestSatelliteUpdate().await()
+            }
         }
     }
 
     private val updateScope: MutableLiveData<CoroutineScope> by lazy {
         MutableLiveData<CoroutineScope>().also {
-            it.value = CoroutineScope(Job() + Dispatchers.IO)
-            it.value!!.launch {
-                delay(15000L)
-                while (conversionScopeSave.value == null) {}
-                    while (conversionScopeSave?.value!!.isActive) {// TODO: Do await instead of stupid-spin}
-                    requestSatelliteUpdate()
+            modelInitScope.launch {
+                updateScope.value = CoroutineScope(Job() + Dispatchers.IO)
+                updateScope.value!!.launch {
+
+                    while (true) {
+                        delay(5000L)
+                        while (conversionScopeSave?.value!!.isActive) {// TODO: Do await instead of stupid-spin
+                            requestSatelliteUpdate().await()
+                        }
+                    }
                 }
             }
-
         }
     }
 
     private val conversionScopeSave: MutableLiveData<CoroutineScope> by lazy {
         MutableLiveData<CoroutineScope>().also {
-            it.value = CoroutineScope(Job() + Dispatchers.IO)
+            modelInitScope.launch {
+                conversionScopeSave.value = CoroutineScope(Job() + Dispatchers.IO)
+            }
         }
     }
 
-    private val tleConversion: MutableLiveData<TLEConversion> by lazy {
-        MutableLiveData<TLEConversion>().also {
-            it.value = TLEConversion(tleUrlText)
-        }
-    }
-
-    fun getMap(): MapboxMap {
-        return map
-    }
+// TODO: May need later
+//    fun getMap(): MapboxMap {
+//        return map
+//    }
+//    fun getUpdateScope(): LiveData<CoroutineScope> {
+//        return updateScope
+//    }
+//    fun getConversionScopeSave(): LiveData<CoroutineScope> {
+//        return conversionScopeSave
+//    }
 
     fun getDisplayedSatellites(): LiveData<ArrayList<Feature>> {
         return displayedSatellites
     }
 
-    fun getUpdateScope(): LiveData<CoroutineScope> {
-        return updateScope
-    }
 
-    fun getConversionScopeSave(): LiveData<CoroutineScope> {
-        return conversionScopeSave
-    }
 
     fun setMapView(mapView: MapView) {
         this.mapView = mapView
@@ -106,19 +108,11 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         this.map = map
     }
 
-    fun bufferSatellites(satellites: List<Feature>) {
-
-    }
-
-    fun pushSatellites() {
-
-    }
-
     /**
-     * Launch both the producer and consumer of satellite data with respect
-     *   to current filter settings.
+     * Launch both the producer and consumer of satellite data.
+     * Return an asynchronous job to await full group completion.
      */
-    fun requestSatelliteUpdate() {
+    fun requestSatelliteUpdate(): Deferred<Any> {
         conversionScopeSave.value?.cancel()
 
         val conversionScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -127,10 +121,11 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
 
         toggleWaitNotifier(true, "Updating ")
 
-
-
         val producer = conversionScope.async {
-            tleConversion.value?.initConversionPipelineAsync(conversionPipe, conversionScope)
+            // TODO: Add chunking of data for smoother loading?
+            for (satellite in SatelliteManager.getSatellitesIterator()) {
+                conversionPipe.send(satellite)
+            }
         }
 
         val consumer = conversionScope.async {
@@ -156,8 +151,9 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
             }
         }
 
-        val job = conversionScope.async {
-
+        return conversionScope.async {
+            producer.await()
+            consumer.await()
         }
     }
 

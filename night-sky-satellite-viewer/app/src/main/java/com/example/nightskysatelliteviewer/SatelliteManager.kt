@@ -7,6 +7,9 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
+import com.mapbox.geojson.Feature
+import com.mapbox.geojson.Point
+import com.mapbox.mapboxsdk.geometry.LatLng
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -53,6 +56,13 @@ object SatelliteManager {
         createOrFindDb(context)
         initialized = true
     }
+
+    // TODO: Replace with real later
+    fun getSatellitesIterator(): Iterator<DisplaySatellite> {
+        val list = listOf(DisplaySatellite("LEL", "1", LatLng(0.0,0.0)))
+        return list.iterator()
+    }
+
 
     private fun getSatelliteNodeList(): NodeList? {
         var satelliteXmlUrl = URL(satelliteXmlUrlText)

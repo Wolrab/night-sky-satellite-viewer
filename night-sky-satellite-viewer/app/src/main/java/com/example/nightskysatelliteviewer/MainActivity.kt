@@ -33,10 +33,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapView.getMapAsync(this)
         model.setMapView(mapView)
 
-        val satelliteSearch = findViewById<EditText>(R.id.editTextSearch)
-        model.setFilter(PrefixFilter(this)
-        satelliteSearch.addTextChangedListener(model.getFilter()))
-
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
             var popup = PopupMenu(this, menu_button)
@@ -53,21 +49,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 true
             })
             popup.show()
-        }
-
-        SatelliteManager.onDbUpdateComplete = {
-            (context as Activity).runOnUiThread(kotlinx.coroutines.Runnable() {
-                toggleWaitNotifier(false, "")
-            })
-            model.requestSatelliteUpdate()
-        }
-
-        // TODO: If not wrong its stupid (what is context of the context's use?)
-        SatelliteManager.initialize(context, (context as MainActivity))
-        SatelliteManager.onDbUpdateStart = {
-            (context as Activity).runOnUiThread(kotlinx.coroutines.Runnable() {
-                toggleWaitNotifier(true, "Updating database...")
-            })
         }
 
         // Callback for changes to satellites

@@ -21,8 +21,8 @@ class PrefixFilter(override val filterContext: Context): SatelliteFilter(filterC
         val model: NightSkyViewModel by (filterContext as MainActivity).viewModels()
         // TODO: Generate features (?)
         val features = listOf<Feature>()
-        model.bufferSatellites(features)
-        model.pushSatellites()
+//        model.bufferSatellites(features)
+//        model.pushSatellites()
     }
 
     override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}

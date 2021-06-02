@@ -1,5 +1,6 @@
 import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
+import com.example.nightskysatelliteviewer.SatelliteManager
 import com.example.nightskysatelliteviewer.filtering.PrefixFilter
 import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
 import com.example.nightskysatelliteviewer.sdp4.SDP4
@@ -70,16 +71,10 @@ class TLEConversion(val tleText: String) {
 
         val epoch = getJulianDate()
 
+// TODO: Fill in with real DB-TLEConversion communication
+        val satellites = SatelliteManager.getSatellitesIterator()
         while (scope.isActive && satellites.hasNext()) {
-            try {
-                val sat = satellites.next()
-                val latLng = getLatLng(sat.name, epoch)
-                val satOut = DisplaySatellite(sat.name, sat.id, latLng)
-                outPipe.send(satOut)
-            } catch (e: SDP4NoSatException){
-                Log.d("CONVERSION","Local database out of date")
-                // TODO: Update database?
-            }
+            outPipe.send(satellites.next())
         }
         outPipe.close()
     }
