@@ -55,19 +55,19 @@ class LoadingActivity : AppCompatActivity() {
         val managerDone = Channel<Boolean>()
         val calcDone = Channel<Boolean>()
         loadingScope.launch {
-            Log.d("THREADS", "SHOULD RUN FIRST")
+//            Log.d("THREADS", "SHOULD RUN FIRST")
             SatelliteManager.initialize(applicationContext).await()
             managerDone.send(true)
         }
         loadingScope.launch {
             managerDone.receive()
-            Log.d("THREADS", "SHOULD RUN SECOND")
+//            Log.d("THREADS", "SHOULD RUN SECOND")
             requestSatelliteUpdateAsync().await()
             calcDone.send(true)
         }
         loadingScope.launch {
             calcDone.receive()
-            Log.d("THREADS", "SHOULD RUN THIRD")
+//            Log.d("THREADS", "SHOULD RUN THIRD")
             launchMainActivity()
         }
 

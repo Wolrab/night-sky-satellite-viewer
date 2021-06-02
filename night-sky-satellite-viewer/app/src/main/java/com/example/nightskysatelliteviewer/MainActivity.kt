@@ -225,7 +225,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                 }
                 style.addLayer(clusteredLayer)
             }
-            Log.d("DEBUG", "successfully created map style and layers")
+//            Log.d("DEBUG", "successfully created map style and layers")
             map.addOnMapClickListener { point ->
                 val pixel: PointF = map.projection?.toScreenLocation(point) ?: PointF(0F, 0F)
 
@@ -244,19 +244,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         val name = feature.properties()!!.get(SAT_NAME)
                         val id = feature.properties()!!.get(SAT_ID)
                         if (name != null && id != null) {
-                            Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
+//                            Log.d("DEBUG", "FOUND SATELLITE $name WITH ID $id")
 
                         } else if (feature.properties()!!.get(CLUSTER_POINT_COUNT) != null) {
-                            Log.d(
-                                "DEBUG",
-                                "Cluster with ${feature.properties()!!
-                                    .get(CLUSTER_POINT_COUNT)} satellites found"
-                            )
+//                            Log.d(
+//                                "DEBUG",
+//                                "Cluster with ${feature.properties()!!
+//                                    .get(CLUSTER_POINT_COUNT)} satellites found"
+//                            )
                         } else {
-                            Log.d("DEBUG", "Non-satellite found")
+//                            Log.d("DEBUG", "Non-satellite found")
                         }
                     } else {
-                        Log.d("DEBUG", "Feature has no properties")
+//                        Log.d("DEBUG", "Feature has no properties")
                     }
                 }
                 return@addOnMapClickListener true
@@ -281,16 +281,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         if (name != null && id != null) {
                             showToast("Favorited satellite $name WITH ID $id")
                         } else {
-                            Log.d("DEBUG", "Non-satellite found")
+//                            Log.d("DEBUG", "Non-satellite found")
                         }
                     } else {
-                        Log.d("DEBUG", "Feature has no properties")
+//                        Log.d("DEBUG", "Feature has no properties")
                     }
                 }
                 return@addOnMapLongClickListener true
             }
 
-            Log.d("DEBUG", "done creating map")
+//            Log.d("DEBUG", "done creating map")
             mapView.refreshDrawableState()
         }
     }
@@ -340,9 +340,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     fun enableLocationComponent(loadedMapStyle: Style) {
 
         // Request location permissions if not granted
-        Log.d("DEBUG", "Hi")
+//        Log.d("DEBUG", "Hi")
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
-            Log.d("DEBUG", "Hello")
+//            Log.d("DEBUG", "Hello")
             val customLocationComponentOptions = LocationComponentOptions.builder(this)
                 .trackingGesturesManagement(true)
                 .accuracyColor(ContextCompat.getColor(this, R.color.mapbox_blue))
@@ -366,7 +366,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         .build()
                     map.cameraPosition = camPosition
                 } catch (e: Exception) {
-                    Log.d("DEBUG", "Couldn't get GPS location")
+//                    Log.d("DEBUG", "Couldn't get GPS location")
                 }
             }
         } else {
@@ -393,7 +393,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private fun startAutoUpdates() {
         val model: NightSkyViewModel by viewModels()
         updateScope.launch {
-            Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
+//            Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
             requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
             updateMap(model.getDisplayedSatellites())
             while (true) {
@@ -410,14 +410,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
      * into the ViewModel afterwards.*/
     private fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>): Deferred<Any> {
         val model: NightSkyViewModel by viewModels()
-        Log.d("DEBUG", "==============STARTING REQUEST===============")
+//        Log.d("DEBUG", "==============STARTING REQUEST===============")
         return updateScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
             val satellites = iterator.asSequence().filter { satelliteFilter(it) }
 
             for (satellite in satellites) {
-                Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
+//                Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
                 val pair = TLEConversion.satelliteToLatLng(satellite)
                 if (pair != null) {
                     val lat = pair.first
@@ -433,7 +433,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                 }
             }
             model.bufferDisplayedSatellites(displayedSatsBuffer)
-            Log.d("DEBUG", "==============ENDING REQUEST===============")
+//            Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
 
