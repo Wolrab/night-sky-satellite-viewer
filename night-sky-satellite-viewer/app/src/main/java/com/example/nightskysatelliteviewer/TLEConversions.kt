@@ -4,8 +4,8 @@ import android.util.Log
 import com.example.nightskysatelliteviewer.DisplaySatellite
 import com.example.nightskysatelliteviewer.Satellite
 import com.example.nightskysatelliteviewer.SatelliteManager
-import com.example.nightskysatelliteviewer.filtering.PrefixFilter
-import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
+//import com.example.nightskysatelliteviewer.filtering.PrefixFilter
+//import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import com.example.nightskysatelliteviewer.sdp4.SDP4NoSatException
 import com.mapbox.mapboxsdk.geometry.LatLng
@@ -45,11 +45,16 @@ object TLEConversion {
         sdp4.Init()
     }
 
-    fun satelliteToLatLng(satellite: Satellite): Pair<Double, Double> {
-        val pos = getSatellitePositionNormalized(satellite, getJulianDate())
-        val lat = calculateLatitude(pos)
-        val lng = calculateLongitude(pos)
-        return Pair(lat, lng)
+    fun satelliteToLatLng(satellite: Satellite): Pair<Double, Double>? {
+        return try {
+            val pos = getSatellitePositionNormalized(satellite, getJulianDate())
+            val lat = calculateLatitude(pos)
+            val lng = calculateLongitude(pos)
+            Pair(lat, lng)
+        } catch (e: SDP4NoSatException) {
+            null
+        }
+
     }
 
     private fun calculateLongitude(pos: Array<Double>): Double {

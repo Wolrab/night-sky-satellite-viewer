@@ -31,32 +31,6 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:layout_editor_absoluteX="0dp">
 
-        <LinearLayout
-            android:id="@+id/waitNotification"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="bottom|center"
-            android:orientation="horizontal">
-            <ProgressBar
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="top">
-
-                <TextView
-                    android:id="@+id/waitText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:textColor="@color/text_light"
-                    android:text="@string/wait" />
-
-            </LinearLayout>
-        </LinearLayout>
-
     </com.mapbox.mapboxsdk.maps.MapView>
 
     <FrameLayout
