@@ -20,9 +20,9 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
     //private val context = getApplication<Application>().applicationContext
 
     val displayedSatellites: MutableLiveData<ArrayList<Feature>> by lazy {
-        MutableLiveData<ArrayList<Feature>>()//.also {
-            //startAutoUpdates()
-        //}
+        MutableLiveData<ArrayList<Feature>>().also {
+            startAutoUpdates()
+        }
     }
 
     private fun startAutoUpdates() {
@@ -43,10 +43,13 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
     private fun requestSatelliteUpdateAsync(): Deferred<Any> {
         return viewModelScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
+            Log.d("DEBUGGING", "LINE 46")
             for (satellite in SatelliteManager.getSatellitesIterator()) {
+                Log.d("DEBUGGING", "PROCESSING SAT: ${satellite.name}")
                 val pair = TLEConversion.satelliteToLatLng(satellite)
 
                 if (pair != null) {
+                    Log.d("DEBUGGING", "GOT A SAT")
                     val lat = pair.first
                     val lng = pair.second
 

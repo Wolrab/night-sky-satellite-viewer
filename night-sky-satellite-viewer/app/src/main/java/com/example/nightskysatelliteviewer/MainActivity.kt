@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     // MapBox related attributes
     private lateinit var mapView: MapView
     private lateinit var map: MapboxMap
+    private lateinit var map_style: Style
 
     private val SAT_NAME = "sat_name"
     private val SAT_ID = "sat_id"
@@ -257,6 +258,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         Log.d("DEBUG", "MAP IS READY FOOLSSSSSS")
         val model: NightSkyViewModel by viewModels()
         map = mapboxMap
+        mapboxMap.setStyle(Style.Builder().fromUri(Style.DARK)
+        ) { style ->
+            map_style = style
+        }
     }
 
 

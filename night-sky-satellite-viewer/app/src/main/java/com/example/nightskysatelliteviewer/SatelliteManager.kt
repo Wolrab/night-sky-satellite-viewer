@@ -269,7 +269,9 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         }
         override fun next(): Satellite {
             if (cursor.isBeforeFirst) { cursor.moveToFirst() }
-            return getSatelliteAtCursor(cursor)
+            val sat = getSatelliteAtCursor(cursor)
+            cursor.moveToNext()
+            return sat
         }
 
         private fun getSatelliteAtCursor(cursor: Cursor): Satellite {
