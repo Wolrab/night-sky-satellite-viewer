@@ -122,6 +122,7 @@ object SatelliteManager {
         satelliteDbHelper = SatelliteDBHelper(context)
         if (satelliteDbHelper.checkDbInitialized(context)) {
             numSatellites = satelliteDbHelper.getNumSatellites()
+            percentLoaded = 100
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {

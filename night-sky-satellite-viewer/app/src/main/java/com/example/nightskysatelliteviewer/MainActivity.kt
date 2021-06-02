@@ -12,6 +12,7 @@ import android.view.Gravity
 import android.view.MenuItem
 import android.view.View
 import android.widget.*
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -65,7 +66,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private val labelsize: Float = 15.0F
 
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
-    var displayedSatellites = arrayListOf<Feature>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +85,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     override fun onStart() {
         super.onStart()
         mapView.onStart()
+
+        val model: NightSkyViewModel by viewModels()
+
+        updateMap(model.displayedSatellites.value!!)
 
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
@@ -355,21 +359,27 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     }
 
     private fun startAutoUpdates() {
+        val model: NightSkyViewModel by viewModels()
         updateScope.launch {
             Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
             requestSatelliteUpdateAsync().await()
+            updateMap(model.displayedSatellites.value!!)
             while (true) {
                 delay(autoupdateWaitTime)
                 requestSatelliteUpdateAsync().await()
+                updateMap(model.displayedSatellites.value!!)
             }
         }
     }
 
+
     /**
+     * TODO: CODE COPYING NAUGHTY BOYS
      * Launch both the producer and consumer of satellite data.
      * Return an asynchronous job to await full group completion.
      */
     private fun requestSatelliteUpdateAsync(): Deferred<Any> {
+        val model: NightSkyViewModel by viewModels()
         return updateScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
@@ -388,12 +398,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                     feature.addStringProperty(SAT_TLE, satellite.tleString)
                     // TODO: More satellite properties can be cached by adding them to the feature
 
-                    displayedSatellites.add(feature)
+                    model.bufferDisplayedSatellites(arrayListOf(feature))
                 } else {
                     Log.d("DEBUG", "shit lol")
                 }
             }
-            updateMap(displayedSatellites)
         }
     }
+
 }
