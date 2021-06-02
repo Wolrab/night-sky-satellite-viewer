@@ -54,9 +54,10 @@ object SatelliteManager {
 
     private val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
-    fun initialize(context: Context): Deferred<Any> {
-        createOrFindDb(context)
+    fun initialize(context: Context): Deferred<Unit?> {
+        val job = createOrFindDb(context)
         initialized = true
+        return job
     }
 
     private fun getUrlText(urlString: String): String {
@@ -118,15 +119,16 @@ object SatelliteManager {
         }
     }
 
-    private fun createOrFindDb(context: Context) {
+    private fun createOrFindDb(context: Context): Deferred<Unit?> {
         satelliteDbHelper = SatelliteDBHelper(context)
+
+        return dbScope.async {
         if (satelliteDbHelper.checkDbInitialized(context)) {
             numSatellites = satelliteDbHelper.getNumSatellites()
             percentLoaded = 100
             onDbUpdateComplete?.invoke()
             waiting = false
         } else {
-            val updateJob = dbScope.launch {
                 waiting = true
                 onDbUpdateStart?.invoke()
                 val satelliteXmlElements = getSatelliteNodeList()
