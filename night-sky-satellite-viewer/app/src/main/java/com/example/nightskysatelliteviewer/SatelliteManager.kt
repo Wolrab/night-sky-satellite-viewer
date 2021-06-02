@@ -289,7 +289,8 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
             var tleString = cursor.getString(cursor.getColumnIndex(COL_TLEONE))+ "\n" +
                     cursor.getString(cursor.getColumnIndex(COL_TLETWO)) + "\n" +
                     cursor.getString(cursor.getColumnIndex(COL_TLETHREE))
-            return Satellite(name, celestrakId, tleString)
+            val isFavorite = cursor.getInt(cursor.getColumnIndex(COL_IS_FAVORITE)) != 0
+            return Satellite(name, celestrakId, tleString, isFavorite)
         }
     }
 

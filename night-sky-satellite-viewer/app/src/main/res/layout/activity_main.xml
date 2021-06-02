@@ -28,9 +28,7 @@
         android:layout_height="match_parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:layout_editor_absoluteX="0dp">
-
-    </com.mapbox.mapboxsdk.maps.MapView>
+        tools:layout_editor_absoluteX="0dp"/>
 
     <FrameLayout
         android:id="@+id/frameLayout"
@@ -66,9 +64,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:ems="10"
-            android:textColor="@color/text_light"
-            android:inputType="textFilter"
-            android:text="" />
+            android:inputType="textCapCharacters"
+            android:text=""
+            android:textColor="@color/text_light" />
 
     </LinearLayout>
 

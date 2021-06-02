@@ -1,18 +1,7 @@
-import android.graphics.Point
-import android.graphics.PointF
-import android.util.Log
-import com.example.nightskysatelliteviewer.DisplaySatellite
 import com.example.nightskysatelliteviewer.Satellite
-import com.example.nightskysatelliteviewer.SatelliteManager
-//import com.example.nightskysatelliteviewer.filtering.PrefixFilter
-//import com.example.nightskysatelliteviewer.filtering.SatelliteFilter
 import com.example.nightskysatelliteviewer.sdp4.SDP4
 import com.example.nightskysatelliteviewer.sdp4.SDP4NoSatException
-import com.mapbox.mapboxsdk.geometry.LatLng
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import java.io.StringReader
-import java.net.URL
 import kotlin.math.*
 
 /**

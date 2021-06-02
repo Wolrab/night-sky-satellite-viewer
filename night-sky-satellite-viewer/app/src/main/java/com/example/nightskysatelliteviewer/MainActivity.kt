@@ -70,8 +70,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private var onMapInitialized: (()->Unit)? = null
 
-    private var satelliteFilter = { _: Satellite -> true }
+    val dummyFilter = { _: Satellite -> true }
+    private var satelliteFilter = dummyFilter
     private var preserveData = true // Instance variable that takes advantage of MainActivity/ViewModel coupling
+
+    private var filterFavorites = false
 
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
@@ -116,6 +119,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         popupWindow.isFocusable = true
                         popupWindow.showAtLocation(layout, Gravity.CENTER, 0,0)
                     }
+                    R.id.favorites_filter -> {
+                        if (!filterFavorites)
+                            satelliteFilter = {sat: Satellite -> Log.d("DEBUG", "Filter set!")
+                                sat.isFavorite
+                            }
+                        else
+                            satelliteFilter = dummyFilter
+                        if (!updateScope.isActive)
+                            updateScope.launch {
+                                requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
+                            }
+                        filterFavorites = !filterFavorites
+                    }
                 }
                 true
             })
@@ -124,11 +140,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
         val searchBar: EditText = findViewById(R.id.editTextSearch)
         searchBar.doOnTextChanged { text, _, _, _ ->
-            satelliteFilter = {text.toString().toUpperCase().commonPrefixWith(it.name) == text.toString().toUpperCase()}
-            if (!updateScope.isActive)
-                updateScope.launch {
-                    requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
-                }
+            if (text == "" || text == null) {
+                satelliteFilter = dummyFilter
+            }
+            else {
+                satelliteFilter = {text.toString().toUpperCase().commonPrefixWith(it.name) == text.toString().toUpperCase()}
+                if (!updateScope.isActive)
+                    updateScope.launch {
+                        requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
+                    }
+            }
+
         }
         startAutoUpdates()
     }
