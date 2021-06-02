@@ -10,6 +10,8 @@ import com.bumptech.glide.Glide
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Point
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
 
 class LoadingActivity : AppCompatActivity() {
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -18,7 +20,10 @@ class LoadingActivity : AppCompatActivity() {
     private val SAT_ID = "sat_id"
     private val SAT_TLE = "sat_tle"
 
-    private lateinit var calcJob: Deferred<Any>
+    private val dbProp = 0.6
+    private val calcProp = 0.4
+
+    private var calculatedSatellites = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,46 +36,38 @@ class LoadingActivity : AppCompatActivity() {
         (loadingFragment as LoadingBarFragment).setTitle(resources.getString(R.string.first_time_setup))
 
         val model: NightSkyViewModel by viewModels()
-        model.setDetailsSatellite(arrayListOf<Feature>())
     }
 
     override fun onStart() {
         super.onStart()
         val loadingScope = CoroutineScope(Job() + Dispatchers.IO)
-        val dbProp = 0.6
-
-        SatelliteManager.initialize(applicationContext)
 
         val loadingFragment = supportFragmentManager.findFragmentById(R.id.loading_fragment)
-        val job1 = loadingScope.async {
-            delay(50)
-            while (!SatelliteManager.initialized) {
 
-                runOnUiThread(kotlinx.coroutines.Runnable() {
-                    val dbLoaded = SatelliteManager.percentLoaded * dbProp
-                    (loadingFragment as LoadingBarFragment).setProgress((dbLoaded).toInt())
-                })
+        loadingScope.launch {
+            while (true) {
+                val dbLoaded = SatelliteManager.percentLoaded * dbProp
+                val calcLoaded = (calculatedSatellites.toFloat() / (SatelliteManager.numSatellites).toFloat()) * calcProp
+                (loadingFragment as LoadingBarFragment).setProgress(dbLoaded.toInt() + calcLoaded.toInt())
             }
         }
 
-        val job2 = loadingScope.async {
-            job1.await()
-            calcJob = requestSatelliteUpdateAsync()
-            runOnUiThread(kotlinx.coroutines.Runnable() {
-                Log.d("DEBUG", "Gonna compute?")
-                while (!calcJob.isCompleted) {
-                    Log.d("DEBUG", "Computing!")
-                    val calcProp = calculatedSatellites.toFloat() / SatelliteManager.numSatellites.toFloat()
-                    val fullLoaded = (calcProp * (1-dbProp)) + dbProp
-
-                    (loadingFragment as LoadingBarFragment).setProgress(fullLoaded.toInt())
-                }
-            })
-        }
-
+        val managerDone = Channel<Boolean>()
+        val calcDone = Channel<Boolean>()
         loadingScope.launch {
-            job2.await()
-            Log.d("DEBUG", "Oh hi didn't see you there")
+            Log.d("THREADS", "SHOULD RUN FIRST")
+            SatelliteManager.initialize(applicationContext).await()
+            managerDone.send(true)
+        }
+        loadingScope.launch {
+            managerDone.receive()
+            Log.d("THREADS", "SHOULD RUN SECOND")
+            requestSatelliteUpdateAsync().await()
+            calcDone.send(true)
+        }
+        loadingScope.launch {
+            calcDone.receive()
+            Log.d("THREADS", "SHOULD RUN THIRD")
             launchMainActivity()
         }
 
@@ -86,7 +83,6 @@ class LoadingActivity : AppCompatActivity() {
      * Launch both the producer and consumer of satellite data.
      * Return an asynchronous job to await full group completion.
      */
-    private var calculatedSatellites = 0
 
     private fun requestSatelliteUpdateAsync(): Deferred<Any> {
         val model: NightSkyViewModel by viewModels()

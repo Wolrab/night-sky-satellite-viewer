@@ -11,15 +11,9 @@ import com.mapbox.mapboxsdk.maps.MapboxMap
 import kotlinx.coroutines.*
 
 class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
-    val displayedSatellites: MutableLiveData<ArrayList<Feature>> by lazy {
-        MutableLiveData<ArrayList<Feature>>()
-    }
+    val displayedSatellites: MutableList<Feature> = mutableListOf()
 
     fun bufferDisplayedSatellites(satellites: ArrayList<Feature>) {
-        displayedSatellites.value?.addAll(satellites)
-    }
-
-    fun setDetailsSatellite(satellites: ArrayList<Feature>) {
-        displayedSatellites.value = satellites
+        displayedSatellites.addAll(satellites)
     }
 }

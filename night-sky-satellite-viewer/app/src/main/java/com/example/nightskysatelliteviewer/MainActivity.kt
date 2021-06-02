@@ -65,6 +65,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private val labelsize: Float = 15.0F
 
+    private var onMapInitialized: (()->Unit)? = null
+
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,7 +90,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
         val model: NightSkyViewModel by viewModels()
 
-        updateMap(model.displayedSatellites.value!!)
+        onMapInitialized = {
+            updateMap(model.displayedSatellites)
+        }
 
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
@@ -115,7 +119,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         startAutoUpdates()
     }
 
-    private fun updateMap(satellites: ArrayList<Feature>) {
+    private fun updateMap(satellites: MutableList<Feature>) {
         runOnUiThread {
             val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
                 .withProperties(
@@ -295,12 +299,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     }
 
     override fun onMapReady(mapboxMap: MapboxMap) {
-        Log.d("DEBUG", "MAP IS READY FOOLSSSSSS")
         map = mapboxMap
         mapboxMap.setStyle(Style.Builder().fromUri(Style.DARK)
         ) { style ->
             map_style = style
         }
+        onMapInitialized!!.invoke()
     }
 
 
@@ -363,11 +367,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         updateScope.launch {
             Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
             requestSatelliteUpdateAsync().await()
-            updateMap(model.displayedSatellites.value!!)
+            updateMap(model.displayedSatellites)
             while (true) {
                 delay(autoupdateWaitTime)
                 requestSatelliteUpdateAsync().await()
-                updateMap(model.displayedSatellites.value!!)
+                updateMap(model.displayedSatellites)
             }
         }
     }

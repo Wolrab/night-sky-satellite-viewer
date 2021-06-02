@@ -54,7 +54,7 @@ object SatelliteManager {
 
     private val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
-    fun initialize(context: Context) {
+    fun initialize(context: Context): Deferred<Any> {
         createOrFindDb(context)
         initialized = true
     }
