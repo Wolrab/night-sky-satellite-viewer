@@ -218,6 +218,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         )
                     }
                     style.addLayer(layer)
+                    if (!nyoomCompleted) {
+                        enableLocationComponent(style)
+                        nyoomCompleted = true
+                    }
                 }
                 style.addLayer(clusteredLayer)
             }
@@ -432,4 +436,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
             Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
+
+    companion object {
+        var nyoomCompleted = false
+    }
+
 }
