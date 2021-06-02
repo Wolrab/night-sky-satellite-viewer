@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private var onMapInitialized: (()->Unit)? = null
 
     private var satelliteFilter = { _: Satellite -> true }
+    private var preserveData = true // Instance variable that takes advantage of MainActivity/ViewModel coupling
 
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
@@ -135,7 +136,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private fun updateMap(satellites: MutableList<Feature>) {
         val model: NightSkyViewModel by viewModels()
-        model.clearBufferedSatellites()
+
+        if (!preserveData) {
+            model.clearBufferedSatellites()
+        }
+        else {
+            preserveData = false
+        }
+
         runOnUiThread {
             val unclusteredLayer: SymbolLayer = SymbolLayer(UNCLUSTERED_LAYER_ID, SOURCE_ID)
                 .withProperties(
@@ -424,5 +432,4 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
             Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
-
 }

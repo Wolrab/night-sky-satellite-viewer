@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.mapbox.geojson.Feature
 
 class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
+    // TODO: Mutex for more intricate managment
     private var displayedSatellites: MutableList<Feature> = mutableListOf()
 
     fun getDisplayedSatellites(): MutableList<Feature> {
