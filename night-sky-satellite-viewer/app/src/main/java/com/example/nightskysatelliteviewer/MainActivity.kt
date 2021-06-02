@@ -64,12 +64,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private val CLUSTER_COUNT_LAYER = "COUNT"
     private val CLUSTER_POINT_COUNT = "point_count"
     private val SOURCE_ID = "SAT_SOURCE"
-    private val autoupdateWaitTime = 5000L
+    private val autoupdateWaitTime = 1000L
 
     private val labelsize: Float = 15.0F
-    private lateinit var contextIterator: Iterator<Satellite>
 
     private var onMapInitialized: (()->Unit)? = null
+
+    private var satelliteFilter = { _: Satellite -> true }
 
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
@@ -98,8 +99,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
             updateMap(model.getDisplayedSatellites())
         }
 
-        contextIterator = SatelliteManager.getSatellitesIterator()
-
         val menu_button: FloatingActionButton = findViewById(R.id.menubutton)
         menu_button.setOnClickListener {
             var popup = PopupMenu(this, menu_button)
@@ -124,7 +123,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
         val searchBar: EditText = findViewById(R.id.editTextSearch)
         searchBar.doOnTextChanged { text, _, _, _ ->
-            contextIterator = SatelliteManager.getMatchingNameSatellitesIterator(text.toString())
+            satelliteFilter = {text.toString().toUpperCase().commonPrefixWith(it.name) == text.toString().toUpperCase()}
+            if (!updateScope.isActive)
+                updateScope.launch {
+                    requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
+                }
         }
         startAutoUpdates()
     }
@@ -379,11 +382,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         val model: NightSkyViewModel by viewModels()
         updateScope.launch {
             Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
-            requestSatelliteUpdateAsync().await()
+            requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
             updateMap(model.getDisplayedSatellites())
             while (true) {
                 delay(autoupdateWaitTime)
-                requestSatelliteUpdateAsync().await()
+                requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
                 updateMap(model.getDisplayedSatellites())
             }
         }
@@ -393,13 +396,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
      * Asynchronously generates all the satellite
      * features and buffers the satellites features
      * into the ViewModel afterwards.*/
-    private fun requestSatelliteUpdateAsync(): Deferred<Any> {
+    private fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>): Deferred<Any> {
         val model: NightSkyViewModel by viewModels()
         Log.d("DEBUG", "==============STARTING REQUEST===============")
         return updateScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
-            for (satellite in contextIterator) {
+            val satellites = iterator.asSequence().filter { satelliteFilter(it) }
+
+            for (satellite in satellites) {
                 Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
                 val pair = TLEConversion.satelliteToLatLng(satellite)
                 if (pair != null) {
