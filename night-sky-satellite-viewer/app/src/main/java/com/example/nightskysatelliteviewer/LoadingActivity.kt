@@ -16,10 +16,6 @@ import kotlinx.coroutines.sync.Mutex
 class LoadingActivity : AppCompatActivity() {
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
-    private val SAT_NAME = "sat_name"
-    private val SAT_ID = "sat_id"
-    private val SAT_TLE = "sat_tle"
-
     private val dbProp = 0.6
     private val calcProp = 0.4
 
@@ -40,6 +36,7 @@ class LoadingActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        val model: NightSkyViewModel by viewModels()
         val loadingScope = CoroutineScope(Job() + Dispatchers.IO)
 
         val loadingFragment = supportFragmentManager.findFragmentById(R.id.loading_fragment)
@@ -62,7 +59,7 @@ class LoadingActivity : AppCompatActivity() {
         loadingScope.launch {
             managerDone.receive()
 //            Log.d("THREADS", "SHOULD RUN SECOND")
-            requestSatelliteUpdateAsync().await()
+            model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
             calcDone.send(true)
         }
         loadingScope.launch {
@@ -76,33 +73,5 @@ class LoadingActivity : AppCompatActivity() {
     private fun launchMainActivity() {
         val mainIntent: Intent = Intent(this, MainActivity::class.java)
         startActivity(mainIntent)
-    }
-
-    /**
-     * TODO: CODE COPYING NAUGHTY BOYS
-     * Launch both the producer and consumer of satellite data.
-     * Return an asynchronous job to await full group completion.
-     */
-
-    private fun requestSatelliteUpdateAsync(): Deferred<Any> {
-        val model: NightSkyViewModel by viewModels()
-        return updateScope.async {
-            for (satellite in SatelliteManager.getSatellitesIterator()) {
-                val pair = TLEConversion.satelliteToLatLng(satellite)
-                if (pair != null) {
-                    val lat = pair.first
-                    val lng = pair.second
-
-                    val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
-                    feature.addStringProperty(SAT_NAME, satellite.name)
-                    feature.addStringProperty(SAT_ID, satellite.id)
-                    feature.addStringProperty(SAT_TLE, satellite.tleString)
-                    // TODO: More satellite properties can be cached by adding them to the feature
-
-                    model.bufferDisplayedSatellites(arrayListOf(feature))
-                    calculatedSatellites++
-                }
-            }
-        }
     }
 }

@@ -5,6 +5,26 @@
     <string name="first_time_setup">Please wait, satellite viewer is starting...</string>
     <string name="user_location_permission_explanation">Location is needed to show your position on the map</string>
     <string name="user_location_permission_not_granted">For the best experience, please grant location permissions to this app in settings</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- Properties emplaced into satellite Features -->
+    <string name="feature_name">sat_name</string>
+    <string name="feature_id">sat_feature</string>
+    <string name="feature_tle">sat_tle</string>
+    <string name="feature_is_favorite">sat_is_favorite</string>
+
+    <!-- MapBox style -->
+    <string name="unclustered_layer_id">unclustered_layer_id</string>
+    <string name="unclustered_icon_id">unclustered_icon_id</string>
+    <string-array name="clustered_layers_id">
+        <item>clustered_layer_1|150</item>
+        <item>clustered_layer_2|20</item>
+        <item>clustered_layer_3|0</item>
+    </string-array>
+    <string name="clustered_icon_id">clustered_icon_id</string>
+    <string name="cluster_count_layer_id">cluster_count_layer_id</string>
+    <string name="cluster_point_count">point_count</string>
+    <string name="source_id">source_id</string>
+
+
+
 </resources>
