@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private val mapLock = Mutex(true)
  
-    private val autoupdateWaitTime = 1000L
+    private val autoupdateWaitTime = 6000L
 
     private val labelsize: Float = 15.0F
 
@@ -105,6 +105,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         popupWindow.isFocusable = true
                         popupWindow.showAtLocation(layout, Gravity.CENTER, 0,0)
                     }
+                    /*TODO: favorites filter that does not cause crashes
                     R.id.favorites_filter -> {
                         if (!filterFavorites)
                             satelliteFilter = {sat: Satellite -> Log.d("DEBUG", "Filter set!")
@@ -117,7 +118,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                                 model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator(), satelliteFilter = satelliteFilter).await()
                             }
                         filterFavorites = !filterFavorites
-                    }
+                    }*/
                 }
                 true
             })
