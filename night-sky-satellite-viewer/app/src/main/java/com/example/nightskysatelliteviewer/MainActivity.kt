@@ -446,7 +446,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     }
 
     companion object {
-        var nyoomCompleted = true
+        var nyoomCompleted = false
     }
 
 }
