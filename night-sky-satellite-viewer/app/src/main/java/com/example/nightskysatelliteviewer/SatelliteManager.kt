@@ -8,7 +8,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
-import android.util.Log
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -24,9 +23,6 @@ const val satelliteXmlUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?
 const val satelliteTlelUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 const val maxUrlRetries = 5
 
-//TODO: allow user to configure this
-const val updateIntervalMillis = 86400000
-
 private val DATABASE_NAME  = "satelliteDB"
 private val DATABASE_Version: Int = 1
 
@@ -39,9 +35,6 @@ private val COL_TLETWO = "tleTwo"
 private val COL_TLETHREE = "tleThree"
 private val COL_NAME = "name"
 private val COL_IS_FAVORITE = "isFavorite"
-
-private val APP_DATA_TABLE_NAME = "data"
-private val COL_DATE_LAST_UPDATED = "date_last_updated"
 
 class NoConnectivityException () : IOException()
 
@@ -62,7 +55,7 @@ object SatelliteManager {
     private val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context): Deferred<Unit?> {
-        val job = createOrFindDbAsync(context)
+        val job = createOrFindDb(context)
         initialized = true
         return job
     }
@@ -108,59 +101,48 @@ object SatelliteManager {
         return xmlDoc.getElementsByTagName("body")
     }
 
-    private fun updateDb() {
-        waiting = true
-        onDbUpdateStart?.invoke()
-        val satelliteXmlElements = getSatelliteNodeList()
-        val tleStrings = getTleStrings()
-        if (satelliteXmlElements != null) {
-            for (i in 0 until satelliteXmlElements.length) {
-                percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
-                satelliteDbHelper.updateSatelliteFromXmlTle(
-                        (satelliteXmlElements.item(i) as Element), tleStrings[i])
+    fun updateAllSatellites() {
+        val updateJob = dbScope.launch {
+            onDbUpdateStart?.invoke()
+            waiting = true
+            val satelliteXmlElements = getSatelliteNodeList()
+            val tleStrings = getTleStrings()
+            if (satelliteXmlElements != null) {
+                for (i in 0 until satelliteXmlElements.length) {
+                    percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
+                    satelliteDbHelper.updateSatelliteFromXmlTle(
+                            (satelliteXmlElements.item(i) as Element), tleStrings[i])
+                }
             }
+            waiting = false
+            onDbUpdateComplete?.invoke()
         }
-        waiting = false
-        numSatellites = satelliteDbHelper.getNumSatellites()
-        percentLoaded = 100
-        onDbUpdateComplete?.invoke()
     }
 
-    private fun createDb() {
-        waiting = true
-        onDbUpdateStart?.invoke()
-        val satelliteXmlElements = getSatelliteNodeList()
-        val tleStrings = getTleStrings()
-        if (satelliteXmlElements != null) {
-            numSatellites = satelliteXmlElements.length
-            for (i in 0 until satelliteXmlElements.length) {
-                percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
-                satelliteDbHelper.addSatelliteFromXmlTle(
-                    (satelliteXmlElements.item(i) as Element), tleStrings[i])
-            }
-        }
-        satelliteDbHelper.recordUpdateDate()
-        numSatellites = satelliteDbHelper.getNumSatellites()
-        waiting = false
-        onDbUpdateComplete?.invoke()
-    }
-
-    private fun createOrFindDbAsync(context: Context): Deferred<Unit?> {
+    private fun createOrFindDb(context: Context): Deferred<Unit?> {
         satelliteDbHelper = SatelliteDBHelper(context)
 
         return dbScope.async {
-            if (satelliteDbHelper.checkDbInitialized(context)) {
-                if (satelliteDbHelper.checkUpdateNeeded()) {
-                    Log.d("DEBUG", "------updating db------")
-                    updateDb()
-                } else {
-                    waiting = false
-                    percentLoaded = 100
-                    numSatellites = satelliteDbHelper.getNumSatellites()
-                    onDbUpdateComplete?.invoke()
+        if (satelliteDbHelper.checkDbInitialized(context)) {
+            numSatellites = satelliteDbHelper.getNumSatellites()
+            percentLoaded = 100
+            onDbUpdateComplete?.invoke()
+            waiting = false
+        } else {
+                waiting = true
+                onDbUpdateStart?.invoke()
+                val satelliteXmlElements = getSatelliteNodeList()
+                val tleStrings = getTleStrings()
+                if (satelliteXmlElements != null) {
+                    numSatellites = satelliteXmlElements.length
+                    for (i in 0 until satelliteXmlElements.length) {
+                        percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
+                        satelliteDbHelper.addSatelliteFromXmlTle(
+                                (satelliteXmlElements.item(i) as Element), tleStrings[i])
+                    }
                 }
-            } else {
-                createDb()
+                waiting = false
+                onDbUpdateComplete?.invoke()
             }
         }
     }
@@ -203,19 +185,13 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
             "$COL_TLETHREE VARCHAR(255), " +
             "$COL_IS_FAVORITE INTEGER DEFAULT '0');"
 
-    private val CREATE_DATA_TABLE = "CREATE TABLE $APP_DATA_TABLE_NAME" +
-            "($COL_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
-            "$COL_DATE_LAST_UPDATED BIGINT);"
-
     private var DROP_MAIN_TABLE = "DROP TABLE IF EXISTS $ALL_SATS_TABLE_NAME"
-    private var DROP_DATA_TABLE = "DROP TABLE IF EXISTS $APP_DATA_TABLE_NAME"
 
     private lateinit var satellitesDb: SQLiteDatabase
 
     override fun onCreate(db: SQLiteDatabase?) {
         try {
             db?.execSQL(CREATE_SATS_TABLE)
-            db?.execSQL(CREATE_DATA_TABLE)
 
         } catch (e: SQLiteException){
             throw Exception("Error creating database")
@@ -224,7 +200,6 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        //TODO: handle upgrade
         throw Exception("Can't upgrade database")
     }
 
@@ -242,26 +217,8 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         return r
     }
 
-    fun checkUpdateNeeded(): Boolean {
-        val database = this.readableDatabase
-        val updateQuery = "SELECT $COL_DATE_LAST_UPDATED FROM $APP_DATA_TABLE_NAME"
-        val cursor = database.rawQuery(updateQuery, null)
-        cursor.moveToFirst()
-        val lastUpdatedDate = cursor.getLong(cursor.getColumnIndex(COL_DATE_LAST_UPDATED))
-        val currentDate = System.currentTimeMillis()
-        val diff = currentDate - lastUpdatedDate
-        cursor.close()
-        return diff > updateIntervalMillis
-    }
-
-    fun recordUpdateDate() {
-        val database = this.writableDatabase
-        val date = System.currentTimeMillis()
-        val q = "REPLACE INTO $APP_DATA_TABLE_NAME VALUES(1, '$date')"
-        database.execSQL(q)
-    }
-
     fun getNumSatellites(): Int {
+        satellitesDb
         return DatabaseUtils.queryNumEntries(satellitesDb, ALL_SATS_TABLE_NAME, null, null).toInt()
     }
 
