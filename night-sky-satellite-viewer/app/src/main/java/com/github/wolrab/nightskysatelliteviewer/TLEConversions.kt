@@ -1,6 +1,6 @@
-import com.example.nightskysatelliteviewer.Satellite
-import com.example.nightskysatelliteviewer.sdp4.SDP4
-import com.example.nightskysatelliteviewer.sdp4.SDP4NoSatException
+import com.github.wolrab.nightskysatelliteviewer.Satellite
+import com.github.wolrab.nightskysatelliteviewer.sdp4.SDP4
+import com.github.wolrab.nightskysatelliteviewer.sdp4.SDP4NoSatException
 import java.io.StringReader
 import kotlin.math.*
 

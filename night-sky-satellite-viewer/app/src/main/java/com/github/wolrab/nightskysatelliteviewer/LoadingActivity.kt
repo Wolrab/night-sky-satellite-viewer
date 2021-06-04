@@ -1,4 +1,4 @@
-package com.example.nightskysatelliteviewer
+package com.github.wolrab.nightskysatelliteviewer
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
@@ -7,6 +7,8 @@ import android.util.Log
 import android.widget.ImageView
 import androidx.activity.viewModels
 import com.bumptech.glide.Glide
+import com.github.wolrab.nightskysatelliteviewer.LoadingBarFragment
+import com.github.wolrab.nightskysatelliteviewer.R
 import com.mapbox.geojson.Feature
 import com.mapbox.geojson.Point
 import kotlinx.coroutines.*

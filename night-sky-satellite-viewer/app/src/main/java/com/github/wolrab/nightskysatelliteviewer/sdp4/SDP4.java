@@ -1,4 +1,4 @@
-package com.example.nightskysatelliteviewer.sdp4;
+package com.github.wolrab.nightskysatelliteviewer.sdp4;
 
 import java.io.*;
 import java.text.*;

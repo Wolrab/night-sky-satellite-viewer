@@ -1,9 +1,9 @@
 
-package com.example.nightskysatelliteviewer.sdp4;
+package com.github.wolrab.nightskysatelliteviewer.sdp4;
 
 /**
- * <p>The <code>TimesException</code> is superclass for any exceptions that
- * may be thrown by the {@link Times Times} class.
+ * <p>The <code>HmelibException</code> is superclass for any exceptions that
+ * may be thrown by the {@link Hmelib Hmelib} class.
  *
  * <p>Copyright: &copy; 2003 Horst Meyerdierks.
  *
@@ -20,7 +20,7 @@ package com.example.nightskysatelliteviewer.sdp4;
  * <p>You should have received a copy of the GNU General Public Licence
  * along with this programme; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
+
 <dl>
 <dt><strong>2003-09-16:</strong> hme</dt>
 <dd>Initial revision.</dd>
@@ -30,7 +30,7 @@ package com.example.nightskysatelliteviewer.sdp4;
   Horst Meyerdierks, http://www.chiandh.me.uk
  */
 
-public class TimesException extends Exception {
-  public TimesException()         {super();}
-  public TimesException(String s) {super(s);}
+public class HmelibException extends Exception {
+  public HmelibException()         {super();}
+  public HmelibException(String s) {super(s);}
 }

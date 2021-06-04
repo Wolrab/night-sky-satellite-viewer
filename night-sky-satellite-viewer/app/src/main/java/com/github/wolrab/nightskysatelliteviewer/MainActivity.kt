@@ -1,4 +1,4 @@
-package com.example.nightskysatelliteviewer
+package com.github.wolrab.nightskysatelliteviewer
 
 import android.annotation.SuppressLint
 import android.graphics.BitmapFactory

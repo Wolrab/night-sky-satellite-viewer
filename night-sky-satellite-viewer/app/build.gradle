@@ -8,7 +8,7 @@ android {
     buildToolsVersion "30.0.3"
 
     defaultConfig {
-        applicationId "com.example.nightskysatelliteviewer"
+        applicationId "com.github.wolrab.nightskysatelliteviewer"
         minSdkVersion 19
         targetSdkVersion 30
         versionCode 1

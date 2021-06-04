@@ -1,5 +1,5 @@
 
-package com.example.nightskysatelliteviewer.sdp4;
+package com.github.wolrab.nightskysatelliteviewer.sdp4;
 
 /**
  * <p>The <code>HmelibInvalidDateException</code> is thrown when a date cannot

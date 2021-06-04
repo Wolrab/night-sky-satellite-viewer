@@ -1,9 +1,10 @@
 
-package com.example.nightskysatelliteviewer.sdp4;
+package com.github.wolrab.nightskysatelliteviewer.sdp4;
 
 /**
- * <p>The <code>SDP4Exception</code> is superclass for any exceptions that
- * may be thrown by the {@link SDP4 SDP4} class.</p>
+ * <p>The <code>SDP4NoLineOneException</code> is thrown when the first line
+ * of a two line element set (TLE) is not found.  Also if the second line is
+ * not found.</p>
  *
  * <p>Copyright: &copy; 2003 Horst Meyerdierks.</p>
  *
@@ -20,7 +21,7 @@ package com.example.nightskysatelliteviewer.sdp4;
  * <p>You should have received a copy of the GNU General Public Licence
  * along with this programme; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
- *
+
 <dl>
 <dt><strong>2003-09-16:</strong> hme</dt>
 <dd>Initial revision.</dd>
@@ -28,9 +29,9 @@ package com.example.nightskysatelliteviewer.sdp4;
 
 @author
   Horst Meyerdierks, http://www.chiandh.me.uk
-  */
+ */
 
-public class SDP4Exception extends Exception {
-  public SDP4Exception()         {super();}
-  public SDP4Exception(String s) {super(s);}
+public final class SDP4NoLineOneException extends SDP4Exception {
+  public SDP4NoLineOneException()         {super();}
+  public SDP4NoLineOneException(String s) {super(s);}
 }

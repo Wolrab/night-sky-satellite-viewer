@@ -1,9 +1,9 @@
 
-package com.example.nightskysatelliteviewer.sdp4;
+package com.github.wolrab.nightskysatelliteviewer.sdp4;
 
 /**
- * <p>The <code>TimesAmbigDateException</code> is thrown when a given date
- * is ambiguous.</p>
+ * <p>The <code>SDP4NoSatException</code> is thrown when the named satellite
+ * is not found in the named file.</p>
  *
  * <p>Copyright: &copy; 2003 Horst Meyerdierks.</p>
  *
@@ -22,17 +22,15 @@ package com.example.nightskysatelliteviewer.sdp4;
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
 
 <dl>
-<dt><strong>2003-09-15:</strong> hme
-<dd>Initial revision.
-<dt><strong>2003-09-15:</strong> hme
-<dd>Package review.
+<dt><strong>2003-09-16:</strong> hme</dt>
+<dd>Initial revision.</dd>
 </dl>
 
 @author
   Horst Meyerdierks, http://www.chiandh.me.uk
  */
 
-public final class TimesAmbigDateException extends TimesException {
-  public TimesAmbigDateException()         {super();}
-  public TimesAmbigDateException(String s) {super(s);}
+public final class SDP4NoSatException extends SDP4Exception {
+  public SDP4NoSatException()         {super();}
+  public SDP4NoSatException(String s) {super(s);}
 }
