@@ -20,7 +20,7 @@ We are working on many cool features, a few of which are documented [here!](http
 - And much more!
 
 ## Hey doofuses, you have no software license!
-Good point! We will likely choose some open source license but for now this app will be under the default (and most strict) software license.
+Good point! For the time being this app will be under the default (and most strict) software license.
 
 ## Let me give you code for free!
 Yes! Submit a pull request and we will do our best to respond. Expertise in __astronomy,__ __orbital mechanics__ or general knowledge of __real-time physics simulations__ would be greatly appreciated c:
