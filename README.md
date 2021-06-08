@@ -31,4 +31,5 @@ Good point! For the time being this app will be under the default (and most stri
 ## Let me give you code for free!
 Not yet! While we have refactored much of our original code, theres some tech debt that should be paid off before we start asking for help with features.
 
-[__Contact Us!__](nightskysatelliteviewer@gmail.com)
+__Contact Us!__
+nightskysatelliteviewer@gmail.com
