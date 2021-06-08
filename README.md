@@ -29,6 +29,6 @@ We are working on many cool features, a few of which are documented [here!](http
 Good point! For the time being this app will be under the default (and most strict) software license.
 
 ## Let me give you code for free!
-Yes! Submit a pull request and we will do our best to respond. Expertise in __astronomy,__ __orbital mechanics__ or general knowledge of __real-time physics simulations__ would be greatly appreciated c:
+Not yet! While we have refactored much of our original code, theres some tech debt that should be paid off before we start asking for help with features.
 
 [__Contact Us!__](nightskysatelliteviewer@gmail.com)
