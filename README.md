@@ -1,7 +1,12 @@
+
+
+
+
 # Night Sky Satellite Viewer
 
 ## What is this?
-It's an android app that lets you view (almost) all of the world's satellites in realtime on android devices!
+It's an android app that lets you view (almost) all of the world's satellites in real-time on android devices! An MP4 shows the current features of our app, including smart clustering of satellites at different zoom levels, search functionality and click recognition on satellites.
+https://user-images.githubusercontent.com/1900289/121264119-85655a80-c86b-11eb-850e-90e394a5b03a.mp4
 
 ## Where can I find it?
 For right now no official release exists. For now the easiest way to get it running is pointing Android Studio to the night-sky-satellite-viewer folder and launching to your target device.
