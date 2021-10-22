@@ -56,10 +56,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private var onMapInitialized: (()->Unit)? = null
 
-    private val dummyFilter = { _: Satellite -> true }
-    private var satelliteFilter = dummyFilter // TODO: RESTORE PREVIOUS FILTER WITH BUNDLE ON DESTRUCTION/CREATION OF NEW MAINACTIVITY
     private var preserveData = true // Instance variable that takes advantage of MainActivity/ViewModel coupling
-    private var filterFavorites = false
 
     val initializeScope = CoroutineScope(Job() + Dispatchers.IO)
     val updateScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -105,20 +102,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         popupWindow.isFocusable = true
                         popupWindow.showAtLocation(layout, Gravity.CENTER, 0,0)
                     }
-                    /*TODO: favorites filter that does not cause crashes
                     R.id.favorites_filter -> {
-                        if (!filterFavorites)
-                            satelliteFilter = {sat: Satellite -> Log.d("DEBUG", "Filter set!")
-                                sat.isFavorite
-                            }
-                        else
-                            satelliteFilter = dummyFilter
-                        if (!updateScope.isActive)
-                            updateScope.launch {
-                                model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator(), satelliteFilter = satelliteFilter).await()
-                            }
-                        filterFavorites = !filterFavorites
-                    }*/
+                        FavoritesFilter.toggle()
+                    }
                 }
                 true
             })
@@ -127,16 +113,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
         val searchBar: EditText = findViewById(R.id.editTextSearch)
         searchBar.doOnTextChanged { text, _, _, _ ->
-            if (text == "" || text == null) {
-                satelliteFilter = dummyFilter
-            }
-            else {
-                satelliteFilter = {text.toString().commonPrefixWith(it.name) == text.toString()}
-                if (!updateScope.isActive)
-                    updateScope.launch {
-                        model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
-                    }
-            }
+            SearchFilter.cmp = text
+            // TODO: Need jank update? Need some better way of staling
+            /*if (!updateScope.isActive)
+                updateScope.launch {
+                    model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
+                }*/
 
         }
         startAutoUpdates()

@@ -26,34 +26,37 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         displayedSatellites = mutableListOf()
     }
 
-
     /**
      * Asynchronously generates all the satellite
      * features and buffers the satellites features
      * into the ViewModel afterwards.*/
     fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>, satelliteFilter: (Satellite) -> Boolean = {_: Satellite -> true}): Deferred<Any> {
-//        Log.d("DEBUG", "==============STARTING REQUEST===============")
         return viewModelScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
             val satellites = iterator.asSequence().filter { satelliteFilter(it) }
 
             for (satellite in satellites) {
-//                Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
-                val pair = TLEConversion.satelliteToLatLng(satellite)
-                if (pair != null) {
-                    val lat = pair.first
-                    val lng = pair.second
+                if (FavoritesFilter.filter(satellite) && 
+                    SearchFilter.filter(satellite)) {
+                    
+                    val pair = TLEConversion.satelliteToLatLng(satellite)
+                    if (pair != null) {
+                        val lat = pair.first
+                        val lng = pair.second
 
-                    val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
-                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_name), satellite.name)
-                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.id)
-                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_tle), satellite.tleString)
-                    feature.addBooleanProperty(getApplication<Application>().getString(R.string.feature_is_favorite), satellite.isFavorite)
-                    // TODO: More satellite properties can be cached by adding them to the feature
+                        val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
+                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_name), satellite.name)
+                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.id)
+                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_tle), satellite.tleString)
+                        feature.addBooleanProperty(getApplication<Application>().getString(R.string.feature_is_favorite), satellite.isFavorite)
+                        // TODO: More satellite properties can be cached by adding them to the feature
 
-                    displayedSatsBuffer.add(feature)
+                        displayedSatsBuffer.add(feature)
+                    }
+
                 }
+
             }
             bufferDisplayedSatellites(displayedSatsBuffer)
 //            Log.d("DEBUG", "==============ENDING REQUEST===============")
