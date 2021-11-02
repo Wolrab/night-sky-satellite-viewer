@@ -3,7 +3,7 @@
     <item android:id="@+id/about"
         android:icon="@drawable/refresh"
         android:title="About"/>
-<!--    <item android:id="@+id/favorites_filter"-->
-<!--        android:icon="@drawable/refresh"-->
-<!--        android:title="Filter Favorites"/>-->
+    <item android:id="@+id/favorites_filter"
+        android:icon="@drawable/refresh"
+        android:title="Filter Favorites"/>
 </menu>

@@ -25,6 +25,8 @@
     <string name="cluster_point_count">point_count</string>
     <string name="source_id">source_id</string>
 
-
+    <!-- Filters -->
+    <string name="filter_favorites">favorites</string>
+    <string name="filter_search">search</string>
 
 </resources>

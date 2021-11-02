@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
+import android.util.Log
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -223,16 +224,19 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
     }
 
     fun toggleFavorite(celestrakId: String) {
+        Log.d("FAV", "We're toggling")
         val database = this.writableDatabase
         val contentValues = ContentValues()
         val satelliteQuery = "SELECT $COL_IS_FAVORITE FROM $ALL_SATS_TABLE_NAME WHERE $COL_CELESTRAKID = '$celestrakId'"
         val result = database.rawQuery(satelliteQuery, null)
+        Log.d("FAV", "Query done columns ${result.columnCount}")
         result.moveToFirst()
         val oldFavoriteVal = result.getInt(result.getColumnIndex(COL_IS_FAVORITE))
         val newFavoriteVal = when (oldFavoriteVal) {
             0 -> 1; else -> 0
         }
         contentValues.put(COL_IS_FAVORITE, newFavoriteVal)
+        Log.d("FAV", "Value added")
         database.update(ALL_SATS_TABLE_NAME, contentValues, "$COL_CELESTRAKID=?", arrayOf(celestrakId))
         result.close()
     }

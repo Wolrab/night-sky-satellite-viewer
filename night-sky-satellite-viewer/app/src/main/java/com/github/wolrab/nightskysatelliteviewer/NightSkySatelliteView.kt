@@ -13,6 +13,7 @@ import kotlinx.coroutines.async
 class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
     // TODO: Mutex for more intricate managment
     private var displayedSatellites: MutableList<Feature> = mutableListOf()
+    private val filters: HashMap<String, Filter> = hashMapOf()
 
     fun getDisplayedSatellites(): MutableList<Feature> {
         return displayedSatellites
@@ -26,20 +27,28 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         displayedSatellites = mutableListOf()
     }
 
+    fun addFilter(id: String, filter: Filter) {
+        if (filters[id] == null) filters[id] = filter
+    }
+
+    fun getFilter(id: String): Filter? {
+        return filters[id]
+    }
 
     /**
      * Asynchronously generates all the satellite
      * features and buffers the satellites features
      * into the ViewModel afterwards.*/
-    fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>, satelliteFilter: (Satellite) -> Boolean = {_: Satellite -> true}): Deferred<Any> {
-//        Log.d("DEBUG", "==============STARTING REQUEST===============")
+    fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>): Deferred<Any> {
         return viewModelScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
-            val satellites = iterator.asSequence().filter { satelliteFilter(it) }
+            var satellites = iterator
+            for ((_,filter) in filters) {
+                satellites = satellites.asSequence().filter { filter.filter(it) }.iterator()
+            }
 
             for (satellite in satellites) {
-//                Log.d("DEBUG", "Satellite ${satellite.name} in contextIterator")
                 val pair = TLEConversion.satelliteToLatLng(satellite)
                 if (pair != null) {
                     val lat = pair.first
@@ -56,7 +65,6 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
                 }
             }
             bufferDisplayedSatellites(displayedSatsBuffer)
-//            Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
 }
