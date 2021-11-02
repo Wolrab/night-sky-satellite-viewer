@@ -13,6 +13,7 @@ import kotlinx.coroutines.async
 class NightSkyViewModel(application: Application) : AndroidViewModel(application) {
     // TODO: Mutex for more intricate managment
     private var displayedSatellites: MutableList<Feature> = mutableListOf()
+    private val filters: HashMap<String, Filter> = hashMapOf()
 
     fun getDisplayedSatellites(): MutableList<Feature> {
         return displayedSatellites
@@ -26,40 +27,45 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
         displayedSatellites = mutableListOf()
     }
 
+    fun addFilter(id: String, filter: Filter) {
+        if (filters[id] == null) filters[id] = filter
+    }
+
+    fun getFilter(id: String): Filter? {
+        return filters[id]
+    }
+
     /**
      * Asynchronously generates all the satellite
      * features and buffers the satellites features
      * into the ViewModel afterwards.*/
-    fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>, satelliteFilter: (Satellite) -> Boolean = {_: Satellite -> true}): Deferred<Any> {
+    fun requestSatelliteUpdateAsync(iterator: Iterator<Satellite>): Deferred<Any> {
         return viewModelScope.async {
             val displayedSatsBuffer = arrayListOf<Feature>()
 
-            val satellites = iterator.asSequence().filter { satelliteFilter(it) }
+            var satellites = iterator
+            for ((_,filter) in filters) {
+                satellites = satellites.asSequence().filter { filter.filter(it) }.iterator()
+            }
 
             for (satellite in satellites) {
-                if (FavoritesFilter.filter(satellite) && 
-                    SearchFilter.filter(satellite)) {
-                    
-                    val pair = TLEConversion.satelliteToLatLng(satellite)
-                    if (pair != null) {
-                        val lat = pair.first
-                        val lng = pair.second
+                val pair = TLEConversion.satelliteToLatLng(satellite)
+                if (pair != null) {
+                    val lat = pair.first
+                    val lng = pair.second
 
-                        val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
-                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_name), satellite.name)
-                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.id)
-                        feature.addStringProperty(getApplication<Application>().getString(R.string.feature_tle), satellite.tleString)
-                        feature.addBooleanProperty(getApplication<Application>().getString(R.string.feature_is_favorite), satellite.isFavorite)
-                        // TODO: More satellite properties can be cached by adding them to the feature
+                    val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
+                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_name), satellite.name)
+                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.id)
+                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_tle), satellite.tleString)
+                    feature.addBooleanProperty(getApplication<Application>().getString(R.string.feature_is_favorite), satellite.isFavorite)
+                    // TODO: More satellite properties can be cached by adding them to the feature
 
-                        displayedSatsBuffer.add(feature)
-                    }
-
+                    displayedSatsBuffer.add(feature)
                 }
 
             }
             bufferDisplayedSatellites(displayedSatsBuffer)
-//            Log.d("DEBUG", "==============ENDING REQUEST===============")
         }
     }
 }

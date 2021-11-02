@@ -19,7 +19,6 @@ import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
-import androidx.lifecycle.viewModelScope
 import com.mapbox.android.core.permissions.PermissionsListener
 import com.mapbox.android.core.permissions.PermissionsManager
 import com.mapbox.geojson.Feature
@@ -49,21 +48,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private lateinit var mapStyle: Style
 
     private val mapLock = Mutex(true)
- 
-    private val autoupdateWaitTime = 6000L
-
-    private val labelsize: Float = 15.0F
-
+    private val autoUpdateWaitTime = 6000L
+    private val labelSize: Float = 15.0F
     private var onMapInitialized: (()->Unit)? = null
-
     private var preserveData = true // Instance variable that takes advantage of MainActivity/ViewModel coupling
-
-    val initializeScope = CoroutineScope(Job() + Dispatchers.IO)
-    val updateScope = CoroutineScope(Job() + Dispatchers.IO)
+    private val initializeScope = CoroutineScope(Job() + Dispatchers.IO)
+    private val updateScope = CoroutineScope(Job() + Dispatchers.IO)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token))
         setContentView(R.layout.activity_main)
         mapView = findViewById(R.id.mapView)
@@ -81,6 +74,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         mapView.onStart()
 
         val model: NightSkyViewModel by viewModels()
+
+        var favoritesFilter = model.getFilter(getString(R.string.filter_favorites)) as FavoritesFilter?
+        if (favoritesFilter == null) {
+            favoritesFilter = FavoritesFilter()
+            model.addFilter(getString(R.string.filter_favorites), favoritesFilter)
+        }
+
+        var searchFilter = model.getFilter(getString(R.string.filter_search)) as SearchFilter?
+        if (searchFilter == null) {
+            searchFilter = SearchFilter()
+            model.addFilter(getString(R.string.filter_search), searchFilter)
+        }
 
         onMapInitialized = {
             updateMap(model.getDisplayedSatellites())
@@ -103,7 +108,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                         popupWindow.showAtLocation(layout, Gravity.CENTER, 0,0)
                     }
                     R.id.favorites_filter -> {
-                        FavoritesFilter.toggle()
+                        favoritesFilter.enabled = !favoritesFilter.enabled
                     }
                 }
                 true
@@ -113,17 +118,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
         val searchBar: EditText = findViewById(R.id.editTextSearch)
         searchBar.doOnTextChanged { text, _, _, _ ->
-            SearchFilter.cmp = text
-            // TODO: Need jank update? Need some better way of staling
-            /*if (!updateScope.isActive)
-                updateScope.launch {
-                    model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
-                }*/
-
+            searchFilter.cmp = text.toString()
         }
+
         startAutoUpdates()
     }
-
 
     private fun updateMap(satellites: MutableList<Feature>) {
         val model: NightSkyViewModel by viewModels()
@@ -153,7 +152,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                                 PropertyFactory.textRadialOffset(2.0F),
                                 PropertyFactory.textAnchor(Property.TEXT_ANCHOR_BOTTOM),
                                 PropertyFactory.textAllowOverlap(false),
-                                PropertyFactory.textSize(labelsize),
+                                PropertyFactory.textSize(labelSize),
                                 PropertyFactory.textColor(Color.WHITE)
                         )
                 val clusteredLayer = SymbolLayer(getString(R.string.cluster_count_layer_id), getString(R.string.source_id))
@@ -282,7 +281,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
                             val id = feature.properties()?.get(getString(R.string.feature_id))
                             if (name != null && id != null) {
                                 showToast("Favorited satellite $name WITH ID $id")
-//                                SatelliteManager.toggleFavorite(id.toString())
+                                SatelliteManager.toggleFavorite(id.toString())
                             } else {
                                 Log.d("DEBUG", "Non-satellite found")
                             }
@@ -345,7 +344,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
         }
     }
 
-
     @SuppressLint("MissingPermission")
     fun enableLocationComponent(loadedMapStyle: Style) {
 
@@ -403,12 +401,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
     private fun startAutoUpdates() {
         val model: NightSkyViewModel by viewModels()
         updateScope.launch {
-//            Log.d("DEBUGGING", "STARTING SATELLITE POSITION UPDATES")
-            model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator(), satelliteFilter = satelliteFilter).await()
+            model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
             updateMap(model.getDisplayedSatellites())
             while (true) {
-                delay(autoupdateWaitTime)
-                model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator(), satelliteFilter = satelliteFilter).await()
+                delay(autoUpdateWaitTime)
+                model.requestSatelliteUpdateAsync(SatelliteManager.getSatellitesIterator()).await()
                 updateMap(model.getDisplayedSatellites())
             }
         }
