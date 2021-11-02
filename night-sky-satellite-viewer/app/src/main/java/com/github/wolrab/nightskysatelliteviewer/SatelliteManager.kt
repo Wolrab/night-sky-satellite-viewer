@@ -25,42 +25,60 @@ const val satelliteTlelUrlText = "http://www.celestrak.com/NORAD/elements/gp.php
 const val maxUrlRetries = 5
 
 private val DATABASE_NAME  = "satelliteDB"
-private val DATABASE_Version: Int = 1
 
-private val ALL_SATS_TABLE_NAME = "satellites"
-
-private val COL_ID = "_id"
 private val COL_CELESTRAKID = "celestrakId"
-private val COL_TLEONE = "tleOne"
-private val COL_TLETWO = "tleTwo"
-private val COL_TLETHREE = "tleThree"
+private val COL_TLE = "tle"
 private val COL_NAME = "name"
 private val COL_IS_FAVORITE = "isFavorite"
 
 class NoConnectivityException () : IOException()
 
 object SatelliteManager {
-
     var numSatellites: Int = 0
-
     var percentLoaded: Int = 0
 
-    lateinit var satelliteDbHelper: SatelliteDBHelper
+    lateinit var satelliteDB: SatelliteDB
+    lateinit var satelliteDao: SatelliteDao
 
     var initialized = false
     var waiting = false
 
-    var onDbUpdateComplete: (()->Unit)? = null
-    var onDbUpdateStart: (()->Unit)? = null
-
     private val dbScope = CoroutineScope(Job() + Dispatchers.IO)
 
     fun initialize(context: Context): Deferred<Unit?> {
-        val job = createOrFindDb(context)
-        initialized = true
-        return job
+        satelliteDB = Room.databaseBuilder(
+            context,
+            AppDatabase::class.java, DATABASE_NAME
+        ).build()
+        satelliteDao = satelliteDB.satelliteDao()
+
+
+        return dbScope.async {
+            val satellites = satelliteDao.getAll()
+            if (satellites.size == 0)  { // TODO: Or TLE timeout
+                waiting = true
+                val satelliteXmlElements = getSatelliteNodeList()
+                val tleStrings = getTleStrings()
+                if (satelliteXmlElements != null) {
+                    numSatellites = satelliteXmlElements.length
+                    for (i in 0 until satelliteXmlElements.length) {
+                        percentLoaded = ((i.toFloat() / numSatellites.toFloat()) * 100).toInt()
+                        val sat = createSatellite(satelliteXmlElements[i], tleStrings[i])
+                        satelliteDao.insertSatellite(sat)
+                    }
+                }
+                waiting = false
+            }
+            else {
+                numSatellites = satellites.size
+                percentLoaded = 100
+                waiting = false
+            }
+            initialized = true
+        }
     }
 
+    // Fetch raw string form url
     private fun getUrlText(urlString: String): String {
         var urlText = ""
         var url = URL(urlString)
@@ -82,6 +100,7 @@ object SatelliteManager {
         return urlText
     }
 
+    // Get TLE for each satellite
     private fun getTleStrings(): List<List<String>> {
         val tleText = getUrlText(satelliteTlelUrlText)
         val linesList: List<String> = tleText.lines()
@@ -96,76 +115,41 @@ object SatelliteManager {
         return tleList
     }
 
+    // Get XML for each satellite
     private fun getSatelliteNodeList(): NodeList? {
         val xmlText = getUrlText(satelliteXmlUrlText)
         val xmlDoc = stringToXmlDoc(xmlText)
         return xmlDoc.getElementsByTagName("body")
     }
 
-    fun updateAllSatellites() {
-        val updateJob = dbScope.launch {
-            onDbUpdateStart?.invoke()
-            waiting = true
-            val satelliteXmlElements = getSatelliteNodeList()
-            val tleStrings = getTleStrings()
-            if (satelliteXmlElements != null) {
-                for (i in 0 until satelliteXmlElements.length) {
-                    percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
-                    satelliteDbHelper.updateSatelliteFromXmlTle(
-                            (satelliteXmlElements.item(i) as Element), tleStrings[i])
-                }
-            }
-            waiting = false
-            onDbUpdateComplete?.invoke()
-        }
-    }
-
-    private fun createOrFindDb(context: Context): Deferred<Unit?> {
-        satelliteDbHelper = SatelliteDBHelper(context)
-
-        return dbScope.async {
-        if (satelliteDbHelper.checkDbInitialized(context)) {
-            numSatellites = satelliteDbHelper.getNumSatellites()
-            percentLoaded = 100
-            onDbUpdateComplete?.invoke()
-            waiting = false
-        } else {
-                waiting = true
-                onDbUpdateStart?.invoke()
-                val satelliteXmlElements = getSatelliteNodeList()
-                val tleStrings = getTleStrings()
-                if (satelliteXmlElements != null) {
-                    numSatellites = satelliteXmlElements.length
-                    for (i in 0 until satelliteXmlElements.length) {
-                        percentLoaded = ((i.toFloat()/ numSatellites.toFloat()) * 100).toInt()
-                        satelliteDbHelper.addSatelliteFromXmlTle(
-                                (satelliteXmlElements.item(i) as Element), tleStrings[i])
-                    }
-                }
-                waiting = false
-                onDbUpdateComplete?.invoke()
-            }
-        }
+    private fun createSatellite(xmlElement: Element, tle: List<String>) {
+        val id = getElementContent(xmlElement, "OBJECT_ID")
+        val name = getElementContent(xmlElement, "OBJECT_NAME")
+        val tle = tle[0] + "\n" + tle[1] + "\n" + tle[2]
+        val isFavorite = false
+        return Satellite(id, name, tle, isFavorite)
     }
 
     fun getSatellitesIterator(): Iterator<Satellite> {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        return satelliteDbHelper.getSatellitesIterator()
+        return satelliteDao.getAll().iterator()
     }
 
     fun getFavoriteSatellitesIterator(): Iterator<Satellite> {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        return satelliteDbHelper.getFavoriteSatellitesIterator()
+        return // TODO
     }
 
     fun getMatchingNameSatellitesIterator(nameSearch: String): Iterator<Satellite>  {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        return satelliteDbHelper.getMatchingNameSatellitesIterator(nameSearch)
+        return satelliteDao.getByName(nameSearch).iterator()
     }
 
     fun toggleFavorite(celestrakId: String) {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        satelliteDbHelper.toggleFavorite(celestrakId)
+        val sat = satelliteDao.getSatellite(celestrakId)
+        val isFavorite = !sat.isFavorite
+        satelliteDao.updateSatellite(Satellite(sat.celestID, sat.name, sat.tleString, isFavorite))
     }
 
     private fun stringToXmlDoc(text: String): Document {
@@ -175,7 +159,45 @@ object SatelliteManager {
     }
 }
 
-class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_Version) {
+@Entity
+class Satellite(
+    @PrimaryKey(name = COL_CELESTRAKID) val celestID: String,
+    @ColumnInfo(name = COL_NAME) val name: String,  
+    @ColumnInfo(name = COL_TLE) val tleString: String, 
+    @ColumnInfo(name = COL_IS_FAVORITE) val isFavorite: Boolean
+)
+
+@Dao
+interface SatelliteDao {
+    @Query("SELECT * FROM satellite")
+    fun getAll(): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_NAME LIKE :name")
+    fun getByName(name: String): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_NAME LIKE :name")
+    fun getByFavorite(name: String): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_CELESTRAKID = :id LIMIT 1")
+    fun getSatellite(id: String): Satellite
+
+    @Update
+    fun updateSatellite(sat: Satellite)
+
+    @Insert
+    fun insertSatellite(sat: Satellite)
+
+    @Delete
+    fun deleteSatellite(sat: Satellite)
+}
+
+@Database(entities = [Satellite::class], version = 1)
+abstract class SatelliteDB : RoomDatabase() {
+    abstract fun satelliteDao(): SatelliteDao
+}
+
+/*
+class SatelliteDBHelper() {
 
     private var CREATE_SATS_TABLE = "CREATE TABLE $ALL_SATS_TABLE_NAME " +
             "($COL_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -319,3 +341,4 @@ class SatelliteDBHelper(context: Context): SQLiteOpenHelper(context, DATABASE_NA
         return SatelliteCursorIterator(allSatsCursor)
     }
 }
+*/
