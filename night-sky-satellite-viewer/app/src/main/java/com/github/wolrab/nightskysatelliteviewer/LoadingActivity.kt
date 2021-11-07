@@ -53,6 +53,7 @@ class LoadingActivity : AppCompatActivity() {
 
         val managerDone = Channel<Boolean>()
         val calcDone = Channel<Boolean>()
+
         loadingScope.launch {
 //            Log.d("THREADS", "SHOULD RUN FIRST")
             SatelliteManager.initialize(applicationContext).await()

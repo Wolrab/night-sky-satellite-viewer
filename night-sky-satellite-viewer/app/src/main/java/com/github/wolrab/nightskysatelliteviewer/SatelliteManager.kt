@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteDatabase.openDatabase
 import android.database.sqlite.SQLiteException
 import android.util.Log
+import androidx.room.*
 import kotlinx.coroutines.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -24,20 +25,57 @@ const val satelliteXmlUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?
 const val satelliteTlelUrlText = "http://www.celestrak.com/NORAD/elements/gp.php?GROUP=active&FORMAT=tle"
 const val maxUrlRetries = 5
 
-private val DATABASE_NAME  = "satelliteDB"
+private val DATABASE_NAME  = "satelliteDBFug"
 
-private val COL_CELESTRAKID = "celestrakId"
-private val COL_TLE = "tle"
-private val COL_NAME = "name"
-private val COL_IS_FAVORITE = "isFavorite"
+private const val COL_CELESTRAKID = "celestrakId"
+private const val COL_TLE = "tle"
+private const val COL_NAME = "name"
+private const val COL_IS_FAVORITE = "isFavorite"
 
 class NoConnectivityException () : IOException()
+
+@Entity(tableName = "satellite")
+class Satellite(
+    @PrimaryKey @ColumnInfo(name = COL_CELESTRAKID) val celestID: String,
+    @ColumnInfo(name = COL_NAME) val name: String,
+    @ColumnInfo(name = COL_TLE) val tleString: String,
+    @ColumnInfo(name = COL_IS_FAVORITE) val isFavorite: Boolean
+)
+
+@Dao
+interface SatelliteDao {
+    @Query("SELECT * FROM satellite")
+    fun getAll(): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_NAME LIKE :name")
+    fun getByName(name: String): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_IS_FAVORITE = 1")
+    fun getFavorites(): List<Satellite>
+
+    @Query("SELECT * FROM satellite WHERE $COL_CELESTRAKID = :id LIMIT 1")
+    fun getSatellite(id: String): Satellite
+
+    @Update
+    fun updateSatellite(sat: Satellite)
+
+    @Insert
+    fun insertSatellite(sat: Satellite)
+
+    @Delete
+    fun deleteSatellite(sat: Satellite)
+}
+
+@Database(entities = [Satellite::class], version = 1)
+abstract class SatelliteDB : RoomDatabase() {
+    abstract fun satelliteDao(): SatelliteDao
+}
 
 object SatelliteManager {
     var numSatellites: Int = 0
     var percentLoaded: Int = 0
 
-    lateinit var satelliteDB: SatelliteDB
+    private lateinit var satelliteDB: SatelliteDB
     lateinit var satelliteDao: SatelliteDao
 
     var initialized = false
@@ -48,14 +86,13 @@ object SatelliteManager {
     fun initialize(context: Context): Deferred<Unit?> {
         satelliteDB = Room.databaseBuilder(
             context,
-            AppDatabase::class.java, DATABASE_NAME
+            SatelliteDB::class.java, DATABASE_NAME
         ).build()
         satelliteDao = satelliteDB.satelliteDao()
 
-
         return dbScope.async {
             val satellites = satelliteDao.getAll()
-            if (satellites.size == 0)  { // TODO: Or TLE timeout
+            if (satellites.isEmpty())  { // TODO: Or TLE timeout
                 waiting = true
                 val satelliteXmlElements = getSatelliteNodeList()
                 val tleStrings = getTleStrings()
@@ -63,7 +100,7 @@ object SatelliteManager {
                     numSatellites = satelliteXmlElements.length
                     for (i in 0 until satelliteXmlElements.length) {
                         percentLoaded = ((i.toFloat() / numSatellites.toFloat()) * 100).toInt()
-                        val sat = createSatellite(satelliteXmlElements[i], tleStrings[i])
+                        val sat = createSatellite(satelliteXmlElements.item(i) as Element, tleStrings[i])
                         satelliteDao.insertSatellite(sat)
                     }
                 }
@@ -122,7 +159,11 @@ object SatelliteManager {
         return xmlDoc.getElementsByTagName("body")
     }
 
-    private fun createSatellite(xmlElement: Element, tle: List<String>) {
+    private fun getElementContent(element: Element, name: String): String {
+        return element.getElementsByTagName(name).item(0).textContent
+    }
+
+    private fun createSatellite(xmlElement: Element, tle: List<String>): Satellite {
         val id = getElementContent(xmlElement, "OBJECT_ID")
         val name = getElementContent(xmlElement, "OBJECT_NAME")
         val tle = tle[0] + "\n" + tle[1] + "\n" + tle[2]
@@ -137,7 +178,7 @@ object SatelliteManager {
 
     fun getFavoriteSatellitesIterator(): Iterator<Satellite> {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        return // TODO
+        return satelliteDao.getFavorites().iterator()
     }
 
     fun getMatchingNameSatellitesIterator(nameSearch: String): Iterator<Satellite>  {
@@ -147,9 +188,11 @@ object SatelliteManager {
 
     fun toggleFavorite(celestrakId: String) {
         if (!initialized) { throw UninitializedPropertyAccessException("Database not initialized") }
-        val sat = satelliteDao.getSatellite(celestrakId)
-        val isFavorite = !sat.isFavorite
-        satelliteDao.updateSatellite(Satellite(sat.celestID, sat.name, sat.tleString, isFavorite))
+        dbScope.async {
+            val sat = satelliteDao.getSatellite(celestrakId)
+            val isFavorite = !sat.isFavorite
+            satelliteDao.updateSatellite(Satellite(sat.celestID, sat.name, sat.tleString, isFavorite))
+        }
     }
 
     private fun stringToXmlDoc(text: String): Document {
@@ -159,42 +202,7 @@ object SatelliteManager {
     }
 }
 
-@Entity
-class Satellite(
-    @PrimaryKey(name = COL_CELESTRAKID) val celestID: String,
-    @ColumnInfo(name = COL_NAME) val name: String,  
-    @ColumnInfo(name = COL_TLE) val tleString: String, 
-    @ColumnInfo(name = COL_IS_FAVORITE) val isFavorite: Boolean
-)
 
-@Dao
-interface SatelliteDao {
-    @Query("SELECT * FROM satellite")
-    fun getAll(): List<Satellite>
-
-    @Query("SELECT * FROM satellite WHERE $COL_NAME LIKE :name")
-    fun getByName(name: String): List<Satellite>
-
-    @Query("SELECT * FROM satellite WHERE $COL_NAME LIKE :name")
-    fun getByFavorite(name: String): List<Satellite>
-
-    @Query("SELECT * FROM satellite WHERE $COL_CELESTRAKID = :id LIMIT 1")
-    fun getSatellite(id: String): Satellite
-
-    @Update
-    fun updateSatellite(sat: Satellite)
-
-    @Insert
-    fun insertSatellite(sat: Satellite)
-
-    @Delete
-    fun deleteSatellite(sat: Satellite)
-}
-
-@Database(entities = [Satellite::class], version = 1)
-abstract class SatelliteDB : RoomDatabase() {
-    abstract fun satelliteDao(): SatelliteDao
-}
 
 /*
 class SatelliteDBHelper() {

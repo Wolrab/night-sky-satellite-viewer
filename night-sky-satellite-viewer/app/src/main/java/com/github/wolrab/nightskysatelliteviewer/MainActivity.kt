@@ -302,7 +302,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, PermissionsListene
 
     private fun showToast(displayText: String) {
         val toastLen = Toast.LENGTH_SHORT
-        val finishedToast = Toast.makeText(getApplication(), displayText, toastLen)
+        val finishedToast = Toast.makeText(application, displayText, toastLen)
         finishedToast.show()
     }
 

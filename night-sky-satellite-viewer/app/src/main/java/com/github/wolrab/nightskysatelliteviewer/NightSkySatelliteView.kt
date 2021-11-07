@@ -56,7 +56,7 @@ class NightSkyViewModel(application: Application) : AndroidViewModel(application
 
                     val feature = Feature.fromGeometry(Point.fromLngLat(lng, lat))
                     feature.addStringProperty(getApplication<Application>().getString(R.string.feature_name), satellite.name)
-                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.id)
+                    feature.addStringProperty(getApplication<Application>().getString(R.string.feature_id), satellite.celestID)
                     feature.addStringProperty(getApplication<Application>().getString(R.string.feature_tle), satellite.tleString)
                     feature.addBooleanProperty(getApplication<Application>().getString(R.string.feature_is_favorite), satellite.isFavorite)
                     // TODO: More satellite properties can be cached by adding them to the feature

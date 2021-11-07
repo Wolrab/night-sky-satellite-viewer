@@ -85,7 +85,7 @@ object TLEConversion {
         sdp4.GetPosVel(epoch)
 
         // Set normalization factor to avoid disappearing to infinity in latitude calculations.
-        var factor: Double = 1 / abs(sdp4.itsR.min()!!)
+        var factor: Double = 1 / abs(sdp4.itsR.minOrNull()!!)
 
         // Increase minimum?
         factor *= 1000000
